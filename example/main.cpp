@@ -34,12 +34,12 @@ int main() {
     }
 
     // 나이트 이동 패턴 추가: 전역 상수 KNIGHT_DIRECTIONS 사용
-    kn->addMovePattern(move(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS, 1));
+    kn->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS, 1));
 
     // 킹 이동 패턴 추가
     piece* king = board.getPiece(3, 3);
     if (king) {
-        king->addMovePattern(move(threatType::TAKEMOVE, moveType::RAY_FINITE, KING_DIRECTIONS, 1));
+        king->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KING_DIRECTIONS, 1));
         king->calculateAndUpdateLegalMoves(&board);
         std::cout << "\nKing at d4 legal moves:" << std::endl;
         for (const auto& m : king->getLegalMoves()) {
@@ -52,7 +52,7 @@ int main() {
     // 퀸 이동 패턴 추가
     piece* queen = board.getPiece(4, 4);
     if (queen) {
-        queen->addMovePattern(move(threatType::TAKEMOVE, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
+        queen->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
         queen->calculateAndUpdateLegalMoves(&board);
         std::cout << "\nQueen at e5 legal moves:" << std::endl;
         for (const auto& m : queen->getLegalMoves()) {

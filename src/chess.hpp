@@ -60,6 +60,7 @@ inline void setupAllPieces(bc_board* board) {
             piece* p = board->getPiece(f, r);
             if(p) {
                 setupPiecePatterns(p);
+                p->calculateAndUpdateLegalMoves(board);
             }
         }
     }
