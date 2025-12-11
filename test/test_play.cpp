@@ -6,10 +6,10 @@
 void printPockets(const bc_board& board) {
     auto wp = board.getPocketStock(colorType::WHITE);
     auto bp = board.getPocketStock(colorType::BLACK);
-    auto printSide = [](const char* label, const std::array<int, 6>& p) {
-        std::cout << label << " [K Q B N R P] = "
+    auto printSide = [](const char* label, const std::array<int, 7>& p) {
+        std::cout << label << " [K Q B N R P A] = "
                   << p[0] << " " << p[1] << " " << p[2] << " "
-                  << p[3] << " " << p[4] << " " << p[5] << std::endl;
+                  << p[3] << " " << p[4] << " " << p[5] << " " << p[6] << std::endl;
     };
     printSide("White", wp);
     printSide("Black", bp);
@@ -102,7 +102,8 @@ int main(){
     std::cout << "\n=== 시연 종료, 최종 보드 ===" << std::endl;
     board.printBoard();
     printPockets(board);
-    std::cout << "누적 턴: " << board.getTurn() << std::endl;
+    std::cout << "누적 수: 백=" << board.getWhiteMoveCount() 
+              << ", 흑=" << board.getBlackMoveCount() << std::endl;
 
     return 0;
 }

@@ -44,7 +44,7 @@ inline void setupPiecePatterns(piece* p) {
             }
             break;
         case pieceType::AMAZON:
-            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS, 1));
             p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
             break;
         default:
@@ -60,7 +60,6 @@ inline void setupAllPieces(bc_board* board) {
             piece* p = board->getPiece(f, r);
             if(p) {
                 setupPiecePatterns(p);
-                p->calculateAndUpdateLegalMoves(board);
             }
         }
     }

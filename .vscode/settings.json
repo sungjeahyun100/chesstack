@@ -1,5 +1,6 @@
 {
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/src/**",
+        "${workspaceFolder}/.venv/lib/python3.12/site-packages/pybind11/include",
     ]
 }

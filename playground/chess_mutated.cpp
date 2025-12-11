@@ -33,10 +33,10 @@ pieceType toPieceType(char c) {
 void printPockets(const bc_board& board) {
 	auto wp = board.getPocketStock(colorType::WHITE);
 	auto bp = board.getPocketStock(colorType::BLACK);
-	auto printSide = [](const char* label, const std::array<int, 6>& p) {
-		std::cout << label << " [K Q B N R P] = "
+	auto printSide = [](const char* label, const std::array<int, 7>& p) {
+		std::cout << label << " [K Q B N R P A] = "
 				  << p[0] << " " << p[1] << " " << p[2] << " "
-				  << p[3] << " " << p[4] << " " << p[5] << std::endl;
+				  << p[3] << " " << p[4] << " " << p[5] << " " << p[6] << std::endl;
 	};
 	printSide("White", wp);
 	printSide("Black", bp);
@@ -71,8 +71,10 @@ int main() {
 	printPockets(board);
 
 	while(true) {
-		std::cout << "[턴 " << board.getTurn() + 1 << "] "
-				  << ((board.getTurn() % 2 == 0) ? "백" : "흑")
+		int totalMoves = board.getWhiteMoveCount() + board.getBlackMoveCount();
+		bool isWhiteTurn = (board.getWhiteMoveCount() == board.getBlackMoveCount());
+		std::cout << "[턴 " << totalMoves + 1 << "] "
+				  << (isWhiteTurn ? "백" : "흑")
 				  << " > ";
 		std::string line;
 		if(!std::getline(std::cin, line)) break;
@@ -104,7 +106,8 @@ int main() {
 				continue;
 			}
 
-			colorType turnColor = (board.getTurn() % 2 == 0) ? colorType::WHITE : colorType::BLACK;
+			colorType turnColor = (board.getWhiteMoveCount() == board.getBlackMoveCount()) 
+									? colorType::WHITE : colorType::BLACK;
 			if(pt != pieceType::KING) {
 				if(turnColor == colorType::WHITE && !kingPlacedWhite) {
 					std::cout << "백 킹을 먼저 착수해야 합니다." << std::endl;

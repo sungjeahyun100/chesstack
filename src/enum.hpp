@@ -11,6 +11,19 @@ enum class pieceType{
     AMAZON
 };
 
+// 포켓 인덱스 (일반 기물 + 특수 기물 통합)
+enum class pocketIndex{
+    NONE = -1,
+    KING = 0,
+    QUEEN = 1,
+    BISHOP = 2,
+    KNIGHT = 3,
+    ROOK = 4,
+    PAWN = 5,
+    AMAZON = 6,
+    // 나중에 추가: CHANCELLOR = 7, ARCHBISHOP = 8 등
+};
+
 enum class colorType{
     NONE=-1,
     WHITE,

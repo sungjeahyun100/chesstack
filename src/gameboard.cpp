@@ -1,8 +1,9 @@
 #include <gameboard.hpp>
 #include <cmath>
+#include <algorithm>
 
 // 생성자
-bc_board::bc_board() : turn(0) {
+bc_board::bc_board() : whiteMoveCount(0), blackMoveCount(0) {
     // 보드 초기화
     for(int i = 0; i < BOARD_SIZE; i++) {
         for(int j = 0; j < BOARD_SIZE; j++) {
@@ -12,6 +13,19 @@ bc_board::bc_board() : turn(0) {
     resetPockets();
 }
 
+// 포켓을 설정할 수 있는 생성자
+bc_board::bc_board(const std::array<int, POCKET_SIZE>& whiteStock, const std::array<int, POCKET_SIZE>& blackStock) 
+    : whiteMoveCount(0), blackMoveCount(0) {
+    // 보드 초기화
+    for(int i = 0; i < BOARD_SIZE; i++) {
+        for(int j = 0; j < BOARD_SIZE; j++) {
+            board[i][j] = nullptr;
+        }
+    }
+    whitePocket = whiteStock;
+    blackPocket = blackStock;
+}
+
 // 소멸자
 bc_board::~bc_board() {
     // 모든 piece 포인터는 pieces 벡터에서 관리되므로 여기서 delete 필요 없음
@@ -19,7 +33,8 @@ bc_board::~bc_board() {
 
 // 보드 초기화
 void bc_board::initializeBoard() {
-    turn = 0;
+    whiteMoveCount = 0;
+    blackMoveCount = 0;
     pieces.clear();
     activePieceThisTurn = nullptr;
     performedActionThisTurn = false;
@@ -37,35 +52,60 @@ bool bc_board::isValidPosition(int file, int rank) const {
     return file >= 0 && file < BOARD_SIZE && rank >= 0 && rank < BOARD_SIZE;
 }
 
-// 현재 턴의 플레이어 색상 (0턴=WHITE, 1턴=BLACK ...)
+// 현재 턴의 플레이어 색상 (백과 흑의 수 개수를 비교하여 결정)
 colorType bc_board::currentPlayerColor() const {
-    return (turn % 2 == 0) ? colorType::WHITE : colorType::BLACK;
+    return (whiteMoveCount == blackMoveCount) ? colorType::WHITE : colorType::BLACK;
 }
 
 // pieceType -> 포켓 인덱스
-int bc_board::pieceTypeToIndex(pieceType type) const {
+pocketIndex bc_board::pieceTypeToPocketIndex(pieceType type) const {
     switch(type) {
-        case pieceType::KING:   return 0;
-        case pieceType::QUEEN:  return 1;
-        case pieceType::BISHOP: return 2;
-        case pieceType::KNIGHT: return 3;
-        case pieceType::ROOK:   return 4;
-        case pieceType::PWAN:   return 5;
-        default: return -1;
+        case pieceType::KING:   return pocketIndex::KING;
+        case pieceType::QUEEN:  return pocketIndex::QUEEN;
+        case pieceType::BISHOP: return pocketIndex::BISHOP;
+        case pieceType::KNIGHT: return pocketIndex::KNIGHT;
+        case pieceType::ROOK:   return pocketIndex::ROOK;
+        case pieceType::PWAN:   return pocketIndex::PAWN;
+        case pieceType::AMAZON: return pocketIndex::AMAZON;
+        default: return pocketIndex::NONE; // fallback (shouldn't happen)
     }
 }
 
-// 포켓 참조 반환
+// 포켓 참조 반환 (일반 기물만, 하위 호환성용)
 std::array<int, 6>& bc_board::pocketForColor(colorType color) {
-    return (color == colorType::BLACK) ? blackPocket : whitePocket;
+    static std::array<int, 6> temp;
+    auto& full = fullPocketForColor(color);
+    std::copy_n(full.begin(), 6, temp.begin());
+    return temp;
 }
 
 const std::array<int, 6>& bc_board::pocketForColor(colorType color) const {
+    static std::array<int, 6> temp;
+    const auto& full = fullPocketForColor(color);
+    std::copy_n(full.begin(), 6, temp.begin());
+    return temp;
+}
+
+// 전체 포켓 참조 반환 (일반 + 특수 기물)
+std::array<int, bc_board::POCKET_SIZE>& bc_board::fullPocketForColor(colorType color) {
     return (color == colorType::BLACK) ? blackPocket : whitePocket;
 }
 
-std::array<int, 6> bc_board::getPocketStock(colorType color) const {
-    return pocketForColor(color);
+const std::array<int, bc_board::POCKET_SIZE>& bc_board::fullPocketForColor(colorType color) const {
+    return (color == colorType::BLACK) ? blackPocket : whitePocket;
+}
+
+std::array<int, bc_board::POCKET_SIZE> bc_board::getPocketStock(colorType color) const {
+    return fullPocketForColor(color);
+}
+
+int bc_board::getPocketCount(colorType color, pocketIndex idx) const {
+    const auto& pocket = fullPocketForColor(color);
+    int index = static_cast<int>(idx);
+    if (index >= 0 && index < POCKET_SIZE) {
+        return pocket[index];
+    }
+    return 0;
 }
 
 // 포켓 초기화 (초기 보유말)
@@ -75,12 +115,12 @@ void bc_board::resetPockets() {
 }
 
 // 포켓 보유량 수동 설정 (색상별)
-void bc_board::setPocketStock(colorType color, const std::array<int, 6>& stock) {
-    pocketForColor(color) = stock;
+void bc_board::setPocketStock(colorType color, const std::array<int, POCKET_SIZE>& stock) {
+    fullPocketForColor(color) = stock;
 }
 
 // 포켓 보유량 수동 설정 (양쪽 한 번에)
-void bc_board::setPocketStockBoth(const std::array<int, 6>& whiteStock, const std::array<int, 6>& blackStock) {
+void bc_board::setPocketStockBoth(const std::array<int, POCKET_SIZE>& whiteStock, const std::array<int, POCKET_SIZE>& blackStock) {
     whitePocket = whiteStock;
     blackPocket = blackStock;
 }
@@ -91,11 +131,7 @@ piece* bc_board::getPieceAt(int file, int rank) const {
     return board[file][rank];
 }
 
-// 착수 시 초기 스턴 계산
-// README 규칙 15: 폰의 스턴은 착수 랭크에 따라 다름
-// 백(WHITE) 기준: rank1=0, rank2=1, ..., rank7=6
-// 흑(BLACK) 기준: rank8=0, rank7=1, ..., rank2=6
-// 다른 기물: 모두 1
+// 착수 시 초기 스턴 계산: 폰은 랭크에 따라, 다른 기물은 스턴 스택 1
 int bc_board::computeInitialStun(pieceType type, colorType color, int rank) const {
     if(type != pieceType::PWAN) {
         return 1; // 폰이 아니면 스턴 1
@@ -104,10 +140,10 @@ int bc_board::computeInitialStun(pieceType type, colorType color, int rank) cons
     // 폰의 경우: 랭크에 따라 스턴 설정
     if(color == colorType::WHITE) {
         // 백: rank1(0)=0stun ~ rank7(6)=6stun
-        return std::min(rank, 6); // rank는 0-7이므로 min으로 6 제한
+        return std::min(rank, 6);
     } else {
         // 흑: rank8(7)=0stun ~ rank2(1)=6stun
-        return std::min(7 - rank, 6); // 7-rank 계산
+        return std::min(7 - rank, 6);
     }
 }
 
@@ -130,10 +166,19 @@ void bc_board::updateAllLegalMoves() {
     }
 }
 
-// 수가 넘어갈 때 스턴 스택/상태 일관성 유지
+// 특정 색상 기물들의 스턴 스택 감소 (해당 플레이어가 수를 둘 때 호출)
 void bc_board::applyStunTickAll() {
     for(auto& p : pieces) {
         p.applyStunTick();
+    }
+}
+
+// 특정 색상의 기물들만 스턴 틱 적용
+void bc_board::applyStunTickForColor(colorType color) {
+    for(auto& p : pieces) {
+        if(p.getColor() == color) {
+            p.applyStunTick();
+        }
     }
 }
 
@@ -168,13 +213,12 @@ bool bc_board::placePiece(pieceType type, colorType color, int file, int rank) {
         return false;
     }
 
-    int pocketIdx = pieceTypeToIndex(type);
-    if(pocketIdx < 0) {
-        std::cerr << "Invalid piece type" << std::endl;
-        return false;
-    }
-    auto& pocket = pocketForColor(color);
-    if(pocket[pocketIdx] <= 0) {
+    // 포켓 인덱스 확인
+    pocketIndex pIdx = pieceTypeToPocketIndex(type);
+    auto& pocket = fullPocketForColor(color);
+    int idx = static_cast<int>(pIdx);
+    
+    if (pocket[idx] <= 0) {
         std::cerr << "No remaining pieces of this type to drop" << std::endl;
         return false;
     }
@@ -182,6 +226,15 @@ bool bc_board::placePiece(pieceType type, colorType color, int file, int rank) {
     if(board[file][rank] != nullptr) {
         std::cerr << "Position already occupied: (" << file << ", " << rank << ")" << std::endl;
         return false;
+    }
+    
+    // 수 카운트 증가 및 해당 색상 기물들의 스턴 스택 감소 (착수 전에 먼저 수행)
+    if(color == colorType::WHITE) {
+        whiteMoveCount++;
+        applyStunTickForColor(colorType::WHITE);
+    } else {
+        blackMoveCount++;
+        applyStunTickForColor(colorType::BLACK);
     }
     
     // pieces 컨테이너에 새로운 기물 추가
@@ -194,10 +247,8 @@ bool bc_board::placePiece(pieceType type, colorType color, int file, int rank) {
     
     // 보드에 포인터 저장
     board[file][rank] = placed;
-    pocket[pocketIdx] -= 1;
+    pocket[idx] -= 1;
     
-    // 새로운 기물의 합법 이동 계산 (스턴이 있으면 이동 불가지만 계산은 유지)
-    updatePieceLegalMoves(placed);
     activePieceThisTurn = placed;
     performedActionThisTurn = true;
     
@@ -253,16 +304,29 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
         return false;
     }
     
+    // 수 카운트 증가 및 해당 색상 기물들의 스턴 스택 감소 (이동 전에 먼저 수행)
+    colorType movingColor = movingPiece->getColor();
+    if(movingColor == colorType::WHITE) {
+        whiteMoveCount++;
+        applyStunTickForColor(colorType::WHITE);
+    } else {
+        blackMoveCount++;
+        applyStunTickForColor(colorType::BLACK);
+    }
+    
     // 목표 위치의 기물 제거 (스턴 이전 후 포켓 적립)
     piece* targetPiece = getPieceAt(toFile, toRank);
     if(targetPiece != nullptr) {
         // 스턴 이전: 잡힌 기물의 스턴을 이동 기물에게 더한다
         movingPiece->addStun(targetPiece->getStunStack());
-        int capturedIdx = pieceTypeToIndex(targetPiece->getPieceType());
-        if(capturedIdx >= 0) {
-            auto& pocketCaptured = pocketForColor(movingPiece->getColor());
-            pocketCaptured[capturedIdx] += 1;
-        }
+        
+        // 잡힌 기물을 포켓에 추가
+        pieceType capturedType = targetPiece->getPieceType();
+        pocketIndex capturedPIdx = pieceTypeToPocketIndex(capturedType);
+        auto& pocketCaptured = fullPocketForColor(movingColor);
+        int capturedIdx = static_cast<int>(capturedPIdx);
+        pocketCaptured[capturedIdx] += 1;
+        
         removePiece(toFile, toRank);
     }
     
@@ -279,9 +343,6 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
     
     // 이동 로그 저장
     log.push_back(PGN(fromFile, fromRank, toFile, toRank, movingPiece->getPieceType(), movingPiece->getColor(), (targetPiece != nullptr)));
-    
-    // 모든 기물의 합법 이동 재계산
-    updateAllLegalMoves();
     
     return true;
 }
@@ -303,8 +364,9 @@ bool bc_board::passAndAddStun(int file, int rank, int delta) {
         std::cerr << "No piece at position" << std::endl;
         return false;
     }
-    if(target->getColor() != currentPlayerColor()) {
-        std::cerr << "Not your turn" << std::endl;
+    // 스턴은 상대 기물에만 적용 (자신 기물은 허용하지 않음)
+    if(target->getColor() == currentPlayerColor()) {
+        std::cerr << "Cannot stun your own piece" << std::endl;
         return false;
     }
     if(target->getPieceType() == pieceType::KING) {
@@ -312,10 +374,20 @@ bool bc_board::passAndAddStun(int file, int rank, int delta) {
         return false;
     }
 
+    // 수 카운트 증가 및 해당 색상 기물들의 스턴 스택 감소 (스턴 추가 전에 먼저 수행)
+    colorType currentColor = currentPlayerColor();
+    if(currentColor == colorType::WHITE) {
+        whiteMoveCount++;
+        applyStunTickForColor(colorType::WHITE);
+    } else {
+        blackMoveCount++;
+        applyStunTickForColor(colorType::BLACK);
+    }
+    
     target->addStun(delta);
     activePieceThisTurn = target;
     performedActionThisTurn = true;
-    nextTurn();
+    
     return true;
 }
 
@@ -346,17 +418,11 @@ bool bc_board::removePiece(int file, int rank) {
     return true;
 }
 
-// 다음 턴 (한 수 = 백-흑 쌍마다 스턴 감소)
+// 다음 턴
 void bc_board::nextTurn() {
-    if(turn % 2 == 1 && turn != 1) {
-        applyStunTickAll();
-    }
-
     // 합법 이동 재계산
     updateAllLegalMoves();
     resetTurnState();
-
-    turn++;
 }
 
 // 특정 위치의 기물 포인터 가져오기 (public)

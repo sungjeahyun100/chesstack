@@ -96,16 +96,11 @@ class piece{
             }
         }
 
-        // 스택/상태 일관성 틱: 스택>0 이면 스턴 활성화하며 1 소모, 스택=0인데 스턴이면 해제
+        // 스택 틱: 각 플레이어가 수를 둘 때마다 스턴 스택 1 감소
         void applyStunTick() {
-            if(stun_stack > 0 && !is_stunned) {
-                stun_stack = std::max(0, stun_stack - 1);
-                is_stunned = true;
-            } else if(stun_stack == 0 && is_stunned) {
-                is_stunned = false;
-            } else if(stun_stack >0 && is_stunned){
-                stun_stack = std::max(0, stun_stack - 1);
-                is_stunned = true;
+            if(stun_stack > 0) {
+                stun_stack--;
+                is_stunned = (stun_stack > 0);
             }
         }
 };
