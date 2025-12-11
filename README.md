@@ -23,5 +23,13 @@
 
 ps.진행방식에 따라, 캐슬링과 앙파상, 폰 두 칸이동은 존재하지 않는다.
 
+## 빌드 명령어
+
+* ubuntu 24.04LTS 기준
+```bash
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
 
 
