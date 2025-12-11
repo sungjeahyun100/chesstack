@@ -37,6 +37,14 @@ bool legalMoveChunk::isValidTarget(bc_board* board, int targetFile, int targetRa
             // 빈 공간이거나 적 기물
             return targetPiece == nullptr || targetPiece->getColor() != cT;
             
+        case threatType::TAKEJUMP:
+            // 점프 대상은 적 기물이어야 함 (뛰어넘으며 캡처)
+            return targetPiece != nullptr && targetPiece->getColor() != cT;
+            
+        case threatType::MOVEJUMP:
+            // 점프 대상은 아군/적 상관없이 기물이 있으면 됨
+            return targetPiece != nullptr;
+            
         default:
             return false;
     }
@@ -76,50 +84,55 @@ std::vector<PGN> legalMoveChunk::calculateRayMoves(int startFile, int startRank,
                         // 이 경우 이동 리스트에 추가하지 않음
                     } else if(tT == threatType::TAKE || tT == threatType::TAKEMOVE) {
                         moves.push_back(PGN(startFile, startRank, newFile, newRank, pT, cT, true));
+                    }else if(tT == threatType::TAKEJUMP) {
+                        // jump over an enemy piece (captured), land one step further; landing enemy is also captured
+                        int jumpFile = newFile + fileDir;
+                        int jumpRank = newRank + rankDir;
+                        if(board->isValidPosition(jumpFile, jumpRank)) {
+                            piece* jumpTarget = board->getPiece(jumpFile, jumpRank);
+                            bool destCapture = (jumpTarget != nullptr && jumpTarget->getColor() != cT);
+                            if(jumpTarget == nullptr || destCapture) {
+                                PGN m(startFile, startRank, jumpFile, jumpRank, pT, cT, destCapture);
+                                m.captureJumped = true;
+                                m.jumpedFile = newFile;
+                                m.jumpedRank = newRank;
+                                moves.push_back(m);
+                            }
+                        }
+                    }else if(tT == threatType::MOVEJUMP) {
+                        // jump over any piece; landing may capture enemy
+                        int jumpFile = newFile + fileDir;
+                        int jumpRank = newRank + rankDir;
+                        if(board->isValidPosition(jumpFile, jumpRank)) {
+                            piece* jumpTarget = board->getPiece(jumpFile, jumpRank);
+                            bool destCapture = (jumpTarget != nullptr && jumpTarget->getColor() != cT);
+                            if(jumpTarget == nullptr || destCapture) {
+                                PGN m(startFile, startRank, jumpFile, jumpRank, pT, cT, destCapture);
+                                m.captureJumped = false;
+                                m.jumpedFile = newFile;
+                                m.jumpedRank = newRank;
+                                moves.push_back(m);
+                            }
+                        }
+                    }
+                }else if(targetPiece->getColor() == cT){
+                    if(tT == threatType::MOVEJUMP) {
+                        int jumpFile = newFile + fileDir;
+                        int jumpRank = newRank + rankDir;
+                        if(board->isValidPosition(jumpFile, jumpRank)) {
+                            piece* jumpTarget = board->getPiece(jumpFile, jumpRank);
+                            bool destCapture = (jumpTarget != nullptr && jumpTarget->getColor() != cT);
+                            if(jumpTarget == nullptr || destCapture) {
+                                PGN m(startFile, startRank, jumpFile, jumpRank, pT, cT, destCapture);
+                                m.captureJumped = false;
+                                m.jumpedFile = newFile;
+                                m.jumpedRank = newRank;
+                                moves.push_back(m);
+                            }
+                        }
                     }
                 }
                 break; // 경로 중단
-            }
-        }
-    }
-    
-    return moves;
-}
-
-// Jump 기반 이동 계산
-std::vector<PGN> legalMoveChunk::calculateJumpMoves(int startFile, int startRank, pieceType pT, 
-                                          colorType cT, bc_board* board) const {
-    std::vector<PGN> moves;
-    
-    if(board == nullptr) return moves;
-    
-    for(const auto& dir : directions) {
-        int fileDir = dir.first;
-        int rankDir = dir.second;
-        
-        // Jump는 최대 거리만큼만 한 번에 이동
-        int jumpFile = startFile + fileDir * maxDistance;
-        int jumpRank = startRank + rankDir * maxDistance;
-        
-        if(!board->isValidPosition(jumpFile, jumpRank)) continue;
-        
-        // Jump는 경로 상의 기물 무시, 목표 위치만 확인
-        piece* targetPiece = board->getPiece(jumpFile, jumpRank);
-        
-        if(targetPiece == nullptr) {
-            // 빈 공간
-            if(tT == threatType::MOVE || tT == threatType::TAKEMOVE) {
-                moves.push_back(PGN(startFile, startRank, jumpFile, jumpRank, pT, cT, false));
-            }
-        } else {
-            // 기물이 있음
-            if(targetPiece->getColor() != cT) {
-                // 적 기물
-                if(tT == threatType::CATCH) {
-                    // CATCH는 이동하지 않음
-                } else if(tT == threatType::TAKE || tT == threatType::TAKEMOVE) {
-                    moves.push_back(PGN(startFile, startRank, jumpFile, jumpRank, pT, cT, true));
-                }
             }
         }
     }
@@ -138,10 +151,6 @@ std::vector<PGN> legalMoveChunk::calculateMoves(int startFile, int startRank, pi
         case moveType::RAY_INFINITE:
         case moveType::RAY_FINITE:
             moves = calculateRayMoves(startFile, startRank, pT, cT, board);
-            break;
-            
-        case moveType::JUMP:
-            moves = calculateJumpMoves(startFile, startRank, pT, cT, board);
             break;
             
         default:

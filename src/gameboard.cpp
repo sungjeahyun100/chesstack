@@ -60,13 +60,21 @@ colorType bc_board::currentPlayerColor() const {
 // pieceType -> 포켓 인덱스
 pocketIndex bc_board::pieceTypeToPocketIndex(pieceType type) const {
     switch(type) {
-        case pieceType::KING:   return pocketIndex::KING;
-        case pieceType::QUEEN:  return pocketIndex::QUEEN;
-        case pieceType::BISHOP: return pocketIndex::BISHOP;
-        case pieceType::KNIGHT: return pocketIndex::KNIGHT;
-        case pieceType::ROOK:   return pocketIndex::ROOK;
-        case pieceType::PWAN:   return pocketIndex::PAWN;
-        case pieceType::AMAZON: return pocketIndex::AMAZON;
+        case pieceType::KING:         return pocketIndex::KING;
+        case pieceType::QUEEN:        return pocketIndex::QUEEN;
+        case pieceType::BISHOP:       return pocketIndex::BISHOP;
+        case pieceType::KNIGHT:       return pocketIndex::KNIGHT;
+        case pieceType::ROOK:         return pocketIndex::ROOK;
+        case pieceType::PWAN:         return pocketIndex::PAWN;
+        case pieceType::AMAZON:       return pocketIndex::AMAZON;
+        case pieceType::GRASSHOPPER:  return pocketIndex::GRASSHOPPER;
+        case pieceType::KNIGHTRIDER:  return pocketIndex::KNIGHTRIDER;
+        case pieceType::ARCHBISHOP:   return pocketIndex::ARCHBISHOP;
+        case pieceType::DABBABA:      return pocketIndex::DABBABA;
+        case pieceType::ALFIL:        return pocketIndex::ALFIL;
+        case pieceType::FERZ:         return pocketIndex::FERZ;
+        case pieceType::CENTAUR:      return pocketIndex::CENTAUR;
+        case pieceType::TESTROOK:   return pocketIndex::TESTROOK;
         default: return pocketIndex::NONE; // fallback (shouldn't happen)
     }
 }
@@ -290,16 +298,16 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
     
     // 합법 이동인지 확인
     const auto& legalMoves = movingPiece->getLegalMoves();
-    bool isLegalMove = false;
+    const PGN* selectedMove = nullptr;
     
     for(const auto& moveData : legalMoves) {
         if(moveData.endFile == toFile && moveData.endRank == toRank) {
-            isLegalMove = true;
+            selectedMove = &moveData;
             break;
         }
     }
     
-    if(!isLegalMove) {
+    if(!selectedMove) {
         std::cerr << "Illegal move" << std::endl;
         return false;
     }
@@ -314,6 +322,20 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
         applyStunTickForColor(colorType::BLACK);
     }
     
+    // TAKEJUMP: 중간 기물도 캡처
+    if(selectedMove->captureJumped && selectedMove->jumpedFile >=0 && selectedMove->jumpedRank >=0) {
+        piece* midPiece = getPieceAt(selectedMove->jumpedFile, selectedMove->jumpedRank);
+        if(midPiece != nullptr) {
+            movingPiece->addStun(midPiece->getStunStack());
+            pieceType capturedType = midPiece->getPieceType();
+            pocketIndex capturedPIdx = pieceTypeToPocketIndex(capturedType);
+            auto& pocketCaptured = fullPocketForColor(movingColor);
+            int capturedIdx = static_cast<int>(capturedPIdx);
+            pocketCaptured[capturedIdx] += 1;
+            removePiece(selectedMove->jumpedFile, selectedMove->jumpedRank);
+        }
+    }
+
     // 목표 위치의 기물 제거 (스턴 이전 후 포켓 적립)
     piece* targetPiece = getPieceAt(toFile, toRank);
     if(targetPiece != nullptr) {

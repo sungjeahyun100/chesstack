@@ -33,10 +33,12 @@ pieceType toPieceType(char c) {
 void printPockets(const bc_board& board) {
 	auto wp = board.getPocketStock(colorType::WHITE);
 	auto bp = board.getPocketStock(colorType::BLACK);
-	auto printSide = [](const char* label, const std::array<int, 7>& p) {
-		std::cout << label << " [K Q B N R P A] = "
+	auto printSide = [](const char* label, const std::array<int, 15>& p) {
+		std::cout << label << " [K Q B N R P A G Kr W D L F C Tr] = "
 				  << p[0] << " " << p[1] << " " << p[2] << " "
-				  << p[3] << " " << p[4] << " " << p[5] << " " << p[6] << std::endl;
+				  << p[3] << " " << p[4] << " " << p[5] << " " << p[6] << " "
+				  << p[7] << " " << p[8] << " " << p[9] << " " << p[10] << " "
+				  << p[11] << " " << p[12] << " " << p[13] << " " << p[14] << std::endl;
 	};
 	printSide("White", wp);
 	printSide("Black", bp);

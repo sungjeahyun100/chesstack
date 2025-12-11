@@ -33,8 +33,8 @@ int main() {
         return 1;
     }
 
-    // 나이트 이동 패턴 추가: 전역 상수 KNIGHT_DIRECTIONS 사용
-    kn->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS, 1));
+    // 나이트 이동 패턴 추가: 점프 제거, 유한 레이로 구현
+    kn->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
 
     // 킹 이동 패턴 추가
     piece* king = board.getPiece(3, 3);

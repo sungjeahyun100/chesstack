@@ -42,7 +42,10 @@ PANEL_BG = (32, 32, 32)
 PANEL_TEXT = (235, 235, 235)
 STUN_TEXT = (200, 50, 50)
 
-PIECE_ORDER = ["P", "N", "B", "R", "Q", "A", "K"]
+PIECE_ORDER = [
+    "P", "N", "B", "R", "Q", "K",
+    "A", "G", "Kr", "W", "D", "L", "F", "C", "Tr"
+]
 PIECE_NAMES = {
     "P": "Pawn",
     "N": "Knight",
@@ -51,10 +54,38 @@ PIECE_NAMES = {
     "Q": "Queen",
     "A": "Amazon",
     "K": "King",
+    "G": "Grasshopper",
+    "Kr": "KnightRider",
+    "W": "Archbishop",
+    "D": "Dabbaba",
+    "L": "Alfil",
+    "F": "Ferz",
+    "C": "Centaur",
+    "Tr": "TesterRook",
 }
 
-white_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'A': 1}
-black_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'A': 1}
+# Glyphs for nicer board display (white pieces shown; black lowercased where applicable)
+PIECE_GLYPH = {
+    "K": "K",
+    "Q": "Q",
+    "R": "R",
+    "B": "B",
+    "N": "N",
+    "P": "P",
+    # Fairy pieces use simple ASCII codes
+    "A": "A",    # Amazon
+    "G": "G",    # Grasshopper
+    "Kr": "Kr",  # KnightRider
+    "W": "W",    # Archbishop
+    "D": "D",    # Dabbaba
+    "L": "L",    # Alfil
+    "F": "F",    # Ferz
+    "C": "C",    # Centaur
+    "Tr": "Tr",  # TesterRook
+}
+
+white_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'G': 1}
+black_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'Tr': 1}
 
 class EngineState:
     """Bridge between UI state and the C++ engine."""
@@ -147,10 +178,12 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
 
             p = gs.piece_at(file, rank)
             if p:
-                symbol = p["type"]
-                if p["color"] == "black":
-                    symbol = symbol.lower() # type: ignore
-                text = font.render(symbol, True, TEXT)
+                symbol = str(p["type"])
+                display = PIECE_GLYPH.get(symbol, symbol)
+                # For black, use lowercase letters; unicode glyphs stay as-is
+                if p["color"] == "black" and display.isalpha():
+                    display = display.lower()
+                text = font.render(display, True, TEXT)
                 rect = text.get_rect(center=(x + SQUARE_SIZE // 2, y + SQUARE_SIZE // 2))
                 screen.blit(text, rect)
 
@@ -185,15 +218,18 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
     for k in PIECE_ORDER:
         white_count = gs.pockets['white'].get(k, 0)
         black_count = gs.pockets['black'].get(k, 0)
-        lines.append(f"  {k}: {white_count:2d} | {black_count:2d}")
+        # 양쪽 다 0이면 표시하지 않음
+        if white_count > 0 or black_count > 0:
+            lines.append(f"  {k}: {white_count:2d} | {black_count:2d}")
     lines.extend(
         [
             "",
             "Controls:",
             "  M move | D drop | S stun",
-            "  1-6 pick drop piece",
+            "  Tab/Shift+Tab cycle pieces",
             "  Enter end turn",
             "  R reset | Q/Esc quit",
+            "  ←/→ [,] also cycle",
         ]
     )
 
@@ -307,9 +343,36 @@ def main() -> None:
                 elif event.key == pygame.K_s:
                     gs.mode = "stun"
                     gs.status = "Stun mode"
-                elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7):
-                    idx = event.key - pygame.K_1
-                    gs.drop_kind = PIECE_ORDER[idx]
+                # Cycle with Tab / Shift+Tab for scalable selection
+                elif event.key == pygame.K_TAB and not pygame.key.get_mods() & pygame.KMOD_SHIFT:
+                    try:
+                        cur_idx = PIECE_ORDER.index(gs.drop_kind)
+                    except ValueError:
+                        cur_idx = 0
+                    gs.drop_kind = PIECE_ORDER[(cur_idx + 1) % len(PIECE_ORDER)]
+                    gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
+                elif event.key == pygame.K_TAB and (pygame.key.get_mods() & pygame.KMOD_SHIFT):
+                    try:
+                        cur_idx = PIECE_ORDER.index(gs.drop_kind)
+                    except ValueError:
+                        cur_idx = 0
+                    gs.drop_kind = PIECE_ORDER[(cur_idx - 1) % len(PIECE_ORDER)]
+                    gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
+                # Cycle selection for larger indexes
+                elif event.key in (pygame.K_RIGHT, pygame.K_PERIOD, pygame.K_RIGHTBRACKET):
+                    try:
+                        cur_idx = PIECE_ORDER.index(gs.drop_kind)
+                    except ValueError:
+                        cur_idx = 0
+                    gs.drop_kind = PIECE_ORDER[(cur_idx + 1) % len(PIECE_ORDER)]
+                    gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
+                elif event.key in (pygame.K_LEFT, pygame.K_COMMA, pygame.K_LEFTBRACKET):
+                    try:
+                        cur_idx = PIECE_ORDER.index(gs.drop_kind)
+                    except ValueError:
+                        cur_idx = 0
+                    gs.drop_kind = PIECE_ORDER[(cur_idx - 1) % len(PIECE_ORDER)]
+                    gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 handle_click(gs, event.pos)

@@ -20,6 +20,14 @@ pieceType piece_type_from_str(const std::string &s) {
 	if (s == "ROOK" || s == "rook" || s == "R") return pieceType::ROOK;
 	if (s == "PAWN" || s == "pawn" || s == "P" || s == "PWAN") return pieceType::PWAN;
 	if (s == "AMAZON" || s == "amazon" || s == "A") return pieceType::AMAZON;
+	if (s == "GRASSHOPPER" || s == "grasshopper" || s == "G") return pieceType::GRASSHOPPER;
+	if (s == "KNIGHTRIDER" || s == "knightrider" || s == "Kr" || s == "KR") return pieceType::KNIGHTRIDER;
+	if (s == "ARCHBISHOP" || s == "archbishop" || s == "W") return pieceType::ARCHBISHOP;
+	if (s == "DABBABA" || s == "dabbaba" || s == "D") return pieceType::DABBABA;
+	if (s == "ALFIL" || s == "alfil" || s == "L") return pieceType::ALFIL;
+	if (s == "FERZ" || s == "ferz" || s == "F") return pieceType::FERZ;
+	if (s == "CENTAUR" || s == "centaur" || s == "C") return pieceType::CENTAUR;
+	if (s == "TESTERROOK" || s == "testerrook" || s == "Tr" || s == "TR") return pieceType::TESTROOK;
 	throw std::invalid_argument("invalid piece type: " + s);
 }
 
@@ -46,19 +54,36 @@ std::string piece_to_str(pieceType t) {
 		case pieceType::ROOK: return "R";
 		case pieceType::PWAN: return "P";
 		case pieceType::AMAZON: return "A";
+		case pieceType::GRASSHOPPER: return "G";
+		case pieceType::KNIGHTRIDER: return "Kr"; // KnightRider distinct code
+		case pieceType::ARCHBISHOP: return "W";  // (Bishop+Knight variant)
+		case pieceType::DABBABA: return "D";
+		case pieceType::ALFIL: return "L";
+		case pieceType::FERZ: return "F";
+		case pieceType::CENTAUR: return "C";
+		case pieceType::TESTROOK: return "Tr";
 		default: return "?";
 	}
 }
 
-py::dict pocket_to_dict(const std::array<int, 7> &p) {
+py::dict pocket_to_dict(const std::array<int, 15> &p) {
 	py::dict d;
+	// Follow pocketIndex ordering from enum.hpp
 	d["K"] = p[0];
 	d["Q"] = p[1];
 	d["B"] = p[2];
 	d["N"] = p[3];
 	d["R"] = p[4];
 	d["P"] = p[5];
-	d["A"] = p[6];  // Amazon
+	d["A"] = p[6];
+	d["G"] = p[7];
+	d["Kr"] = p[8];
+	d["W"] = p[9];
+	d["D"] = p[10];
+	d["L"] = p[11];
+	d["F"] = p[12];
+	d["C"] = p[13];
+	d["Tr"] = p[14];
 	return d;
 }
 
@@ -73,15 +98,24 @@ py::dict piece_to_dict(const piece *p) {
 	return d;
 }
 
-std::array<int, 7> dict_to_pocket(const py::dict &d) {
-	std::array<int, 7> p;
+std::array<int, 15> dict_to_pocket(const py::dict &d) {
+	std::array<int, 15> p{};
+	// Defaults align with standard starting set; specials default to 0
 	p[0] = d.contains("K") ? d["K"].cast<int>() : 1;
 	p[1] = d.contains("Q") ? d["Q"].cast<int>() : 1;
 	p[2] = d.contains("B") ? d["B"].cast<int>() : 2;
 	p[3] = d.contains("N") ? d["N"].cast<int>() : 2;
 	p[4] = d.contains("R") ? d["R"].cast<int>() : 2;
 	p[5] = d.contains("P") ? d["P"].cast<int>() : 8;
-	p[6] = d.contains("A") ? d["A"].cast<int>() : 0;  // Amazon
+	p[6] = d.contains("A") ? d["A"].cast<int>() : 0;
+	p[7] = d.contains("G") ? d["G"].cast<int>() : 0;
+	p[8] = d.contains("Kr") ? d["Kr"].cast<int>() : 0;
+	p[9] = d.contains("W") ? d["W"].cast<int>() : 0;
+	p[10] = d.contains("D") ? d["D"].cast<int>() : 0;
+	p[11] = d.contains("L") ? d["L"].cast<int>() : 0;
+	p[12] = d.contains("F") ? d["F"].cast<int>() : 0;
+	p[13] = d.contains("C") ? d["C"].cast<int>() : 0;
+	p[14] = d.contains("Tr") ? d["Tr"].cast<int>() : 0;
 	return p;
 }
 

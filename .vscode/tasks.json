@@ -1,0 +1,53 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build project_bc",
+			"type": "shell",
+			"command": "pushd \"$PWD/build\" >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after binding changes",
+			"type": "shell",
+			"command": "pushd \"$PWD/build\" >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after pocket expansion",
+			"type": "shell",
+			"command": "pushd \"$PWD/build\" >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after test updates",
+			"type": "shell",
+			"command": "pushd /home/sjh100/바탕화면/project_bc/build >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after TesterRook addition",
+			"type": "shell",
+			"command": "pushd /home/sjh100/바탕화면/project_bc/build >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after all updates",
+			"type": "shell",
+			"command": "pushd /home/sjh100/바탕화면/project_bc/build >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after movejump changes",
+			"type": "shell",
+			"command": "pushd /home/sjh100/바탕화면/project_bc/build >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild after README update (no-op)",
+			"type": "shell",
+			"command": "true",
+			"group": "build"
+		}
+	]
+}

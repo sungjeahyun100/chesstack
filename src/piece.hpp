@@ -39,6 +39,14 @@ const std::vector<std::pair<int, int>> PAWN_CAPTURE_DIRECTIONS = {
     {1, 1}, {-1, 1}  // 상대 진영 방향 대각선 (방향은 색깔에 따라 조정)
 };
 
+const std::vector<std::pair<int, int>> DABBABA_DIRECTIONS = {
+    {2, 0}, {0, 2}, {-2, 0}, {0, -2}
+};
+
+const std::vector<std::pair<int, int>> ALFIL_DIRECTIONS = {
+    {2, 2}, {2, -2}, {-2, 2}, {-2, -2}
+};
+
 class piece{
     private:
         int player_idx;

@@ -13,7 +13,8 @@ inline void setupPiecePatterns(piece* p) {
     
     switch(type) {
         case pieceType::KNIGHT:
-            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS, 1));
+            // RAY_FINITE로 구현: 최대 2칸까지 나이트 방향으로 이동 (경로상 기물에 영향)
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
             break;
         case pieceType::BISHOP:
             p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, BISHOP_DIRECTIONS));
@@ -44,8 +45,34 @@ inline void setupPiecePatterns(piece* p) {
             }
             break;
         case pieceType::AMAZON:
-            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::JUMP, KNIGHT_DIRECTIONS, 1));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
             p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
+            break;
+        case pieceType::GRASSHOPPER:
+            p->addMovePattern(legalMoveChunk(threatType::MOVEJUMP, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
+            break;
+        case pieceType::KNIGHTRIDER:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, KNIGHT_DIRECTIONS));
+            break;
+        case pieceType::ARCHBISHOP:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, BISHOP_DIRECTIONS));
+            break;
+        case pieceType::DABBABA:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, DABBABA_DIRECTIONS, 1));
+            break;
+        case pieceType::ALFIL:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, ALFIL_DIRECTIONS, 1));
+            break;
+        case pieceType::FERZ:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, BISHOP_DIRECTIONS, 1));
+            break;
+        case pieceType::CENTAUR:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KING_DIRECTIONS, 1));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
+            break;
+        case pieceType::TESTROOK:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEJUMP, moveType::RAY_INFINITE, ROOK_DIRECTIONS));
             break;
         default:
             break;

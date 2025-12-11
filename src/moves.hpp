@@ -12,14 +12,19 @@ struct PGN{
         colorType cT;
         bool take;
         bool isDrop; // 착수 여부
+        bool captureJumped; // 중간에 뛰어넘은 기물도 잡는지 (TAKEJUMP)
+        int jumpedFile;
+        int jumpedRank;
         
         // 생성자
         PGN() : startFile(0), startRank(0), endFile(0), endRank(0), 
-                pT(pieceType::NONE), cT(colorType::NONE), take(false), isDrop(false) {}
+            pT(pieceType::NONE), cT(colorType::NONE), take(false), isDrop(false),
+            captureJumped(false), jumpedFile(-1), jumpedRank(-1) {}
         
-        PGN(int sF, int sR, int eF, int eR, pieceType p, colorType c, bool t)
-            : startFile(sF), startRank(sR), endFile(eF), endRank(eR),
-              pT(p), cT(c), take(t), isDrop(false) {}
+                PGN(int sF, int sR, int eF, int eR, pieceType p, colorType c, bool t)
+                        : startFile(sF), startRank(sR), endFile(eF), endRank(eR),
+                            pT(p), cT(c), take(t), isDrop(false),
+                            captureJumped(false), jumpedFile(-1), jumpedRank(-1) {}
               
         // PGN 문자열로 변환 (예: "Nf3", "exd5", "Q@d4")
         std::string toString() const;
@@ -65,8 +70,6 @@ class legalMoveChunk{
         // 개별 이동 계산 헬퍼 함수들
         std::vector<PGN> calculateRayMoves(int startFile, int startRank, pieceType pT, colorType cT, 
                                           class bc_board* board) const;
-        std::vector<PGN> calculateJumpMoves(int startFile, int startRank, pieceType pT, colorType cT, 
-                                           class bc_board* board) const;
         
         // threatType에 따른 필터링
         bool isValidTarget(class bc_board* board, int targetFile, int targetRank, colorType cT) const;

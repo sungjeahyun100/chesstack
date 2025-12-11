@@ -16,8 +16,19 @@ class bc_board{
         std::list<piece> pieces; // 모든 기물 관리(주소 안정성 보장)
         piece* activePieceThisTurn = nullptr; // 한 턴에 움직인 기물
         bool performedActionThisTurn = false; // 드롭/이동 중복 방지
-        inline static constexpr int POCKET_SIZE = 7; // KING, QUEEN, BISHOP, KNIGHT, ROOK, PAWN, AMAZON
-        inline static constexpr std::array<int, POCKET_SIZE> DEFAULT_POCKET_STOCK = {1, 1, 2, 2, 2, 8, 0};
+        inline static constexpr int POCKET_SIZE = 15; // + TesterRook
+        inline static constexpr std::array<int, POCKET_SIZE> DEFAULT_POCKET_STOCK = {
+            1, 1, 2, 2, 2, 8, // K,Q,B,N,R,P
+            0, // A (Amazon)
+            0, // G (Grasshopper)
+            0, // Kr (KnightRider)
+            0, // W (Archbishop)
+            0, // D (Dabbaba)
+            0, // L (Alfil)
+            0, // F (Ferz)
+            0, // C (Centaur)
+            0  // Tr (TesterRook)
+        };
         std::array<int, POCKET_SIZE> whitePocket{}; // 통합 포켓 (일반 기물 + 특수 기물)
         std::array<int, POCKET_SIZE> blackPocket{};
         
