@@ -1,5 +1,6 @@
 #pragma once
 
+// 기물 인덱스 (일반 기물 + 특수 기물 통합)
 enum class pieceType{
     NONE=-1,
     KING,
@@ -16,7 +17,8 @@ enum class pieceType{
     ALFIL,
     FERZ,
     CENTAUR,
-    TESTROOK 
+    TESTROOK,
+    CAMEL
 };
 
 // 포켓 인덱스 (일반 기물 + 특수 기물 통합)
@@ -36,7 +38,8 @@ enum class pocketIndex{
     ALFIL = 11,
     FERZ = 12,
     CENTAUR =13,
-    TESTROOK =14
+    TESTROOK =14,
+    CAMEL = 15
     // 나중에 추가: CHANCELLOR = 7, ARCHBISHOP = 8 등
 };
 

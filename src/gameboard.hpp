@@ -6,6 +6,8 @@
 #include <moves.hpp>
 #include <piece.hpp>
 
+inline static constexpr int POCKET_SIZE = 16;
+
 class bc_board{
     private:
         static constexpr int BOARD_SIZE = 8; // 8x8 체스보드
@@ -16,7 +18,6 @@ class bc_board{
         std::list<piece> pieces; // 모든 기물 관리(주소 안정성 보장)
         piece* activePieceThisTurn = nullptr; // 한 턴에 움직인 기물
         bool performedActionThisTurn = false; // 드롭/이동 중복 방지
-        inline static constexpr int POCKET_SIZE = 15; // + TesterRook
         inline static constexpr std::array<int, POCKET_SIZE> DEFAULT_POCKET_STOCK = {
             1, 1, 2, 2, 2, 8, // K,Q,B,N,R,P
             0, // A (Amazon)
@@ -27,7 +28,8 @@ class bc_board{
             0, // L (Alfil)
             0, // F (Ferz)
             0, // C (Centaur)
-            0  // Tr (TesterRook)
+            0,  // Tr (TesterRook)
+            0 //Cl(Camel)
         };
         std::array<int, POCKET_SIZE> whitePocket{}; // 통합 포켓 (일반 기물 + 특수 기물)
         std::array<int, POCKET_SIZE> blackPocket{};
@@ -66,6 +68,7 @@ class bc_board{
         bool movePiece(int fromFile, int fromRank, int toFile, int toRank);
         bool removePiece(int file, int rank);
         bool passAndAddStun(int file, int rank, int delta = 1); // 킹 제외 스턴 +1
+        bool promote(int file, int rank, pieceType promoteTo); // 폰 프로모션
         
         // 게임 진행 함수
         void nextTurn(); // 이동 후 호출 (스턴 감소)

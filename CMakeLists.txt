@@ -31,15 +31,9 @@ add_executable(bc_test_pgn
     ${SOURCES}
 )
 
-add_executable(bc_play
-    ${CMAKE_CURRENT_SOURCE_DIR}/playground/chess_mutated.cpp
-    ${SOURCES}
-)
-
 target_include_directories(bc_example PRIVATE ${SRC_DIR})
 target_include_directories(bc_test_play PRIVATE ${SRC_DIR})
 target_include_directories(bc_test_pgn PRIVATE ${SRC_DIR})
-target_include_directories(bc_play PRIVATE ${SRC_DIR})
 
 target_compile_options(bc_example PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_options(bc_test_play PRIVATE -Wall -Wextra -Wpedantic)

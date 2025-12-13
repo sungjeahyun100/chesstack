@@ -47,7 +47,7 @@
 - **턴 관리**: `whiteMoveCount`와 `blackMoveCount`로 각 플레이어 수 추적
 - **턴 결정**: `whiteMoveCount == blackMoveCount`이면 백 턴, 아니면 흑 턴
 - **스턴 감소**: 각 플레이어가 수를 두기 **전에** 해당 플레이어의 모든 기물 스턴 -1
-- **포켓 시스템**: `pocketIndex` 기반 15칸 통합 배열 (KING, QUEEN, BISHOP, KNIGHT, ROOK, PAWN, AMAZON, GRASSHOPPER, KNIGHTRIDER, ARCHBISHOP, DABBABA, ALFIL, FERZ, CENTAUR, TESTERROOK)
+- **포켓 시스템**: `pocketIndex` 기반 15칸 통합 배열 (KING, QUEEN, BISHOP, KNIGHT, ROOK, PAWN, AMAZON, GRASSHOPPER, KNIGHTRIDER, ARCHBISHOP, DABBABA, ALFIL, FERZ, CENTAUR, TESTROOK)
 - **특수/변형 기물**
   - Amazon(`A`): 나이트 + 퀸 레이
   - Grasshopper(`G`): MOVEJUMP (아무 기물이나 뛰어넘고 한 칸 뒤 착지, 착지 칸 적이면 캡처)
@@ -57,7 +57,7 @@
   - Alfil(`L`): 대각 2칸 점프 (유한 레이)
   - Ferz(`F`): 왕의 대각 한 칸 (유한 레이)
   - Centaur(`C`): 킹 한 칸 + 나이트 유한 레이
-  - TesterRook(`Tr`): 룩 레이 TAKEMOVE (테스트용)
+  - TestRook(`Tr`): 룩 레이 TAKEMOVE (테스트용)
 - **위협 타입 보강**:
   - `TAKEJUMP`: 적 기물이 행동반경에 있을 때에만 이동 가능하며, 적 기물을 뛰어넘으며 캡처하고, 한 칸 뒤로 착지하며 도착 적 기물도 캡처 (중간+착지 두 개 잡힘)
   - `MOVEJUMP`: 기물에 행동반경 내에 존재해야만 이동 가능하며, 아무 기물이나 뛰어넘고 한 칸 뒤로 이동; 도착지가 적이면 캡처, 이군이면 이동 불가, 중간 기물은 미캡처

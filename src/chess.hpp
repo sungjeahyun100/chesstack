@@ -74,6 +74,9 @@ inline void setupPiecePatterns(piece* p) {
         case pieceType::TESTROOK:
             p->addMovePattern(legalMoveChunk(threatType::TAKEJUMP, moveType::RAY_INFINITE, ROOK_DIRECTIONS));
             break;
+        case pieceType::CAMEL:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, CAMEL_DIRECTIONS, 1));
+            break;
         default:
             break;
     }

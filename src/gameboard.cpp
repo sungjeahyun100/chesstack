@@ -95,15 +95,15 @@ const std::array<int, 6>& bc_board::pocketForColor(colorType color) const {
 }
 
 // 전체 포켓 참조 반환 (일반 + 특수 기물)
-std::array<int, bc_board::POCKET_SIZE>& bc_board::fullPocketForColor(colorType color) {
+std::array<int, POCKET_SIZE>& bc_board::fullPocketForColor(colorType color) {
     return (color == colorType::BLACK) ? blackPocket : whitePocket;
 }
 
-const std::array<int, bc_board::POCKET_SIZE>& bc_board::fullPocketForColor(colorType color) const {
+const std::array<int, POCKET_SIZE>& bc_board::fullPocketForColor(colorType color) const {
     return (color == colorType::BLACK) ? blackPocket : whitePocket;
 }
 
-std::array<int, bc_board::POCKET_SIZE> bc_board::getPocketStock(colorType color) const {
+std::array<int, POCKET_SIZE> bc_board::getPocketStock(colorType color) const {
     return fullPocketForColor(color);
 }
 
@@ -366,6 +366,64 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
     // 이동 로그 저장
     log.push_back(PGN(fromFile, fromRank, toFile, toRank, movingPiece->getPieceType(), movingPiece->getColor(), (targetPiece != nullptr)));
     
+    return true;
+}
+
+// 폰 프로모션: 특정 기물을 다른 기물로 변환
+bool bc_board::promote(int file, int rank, pieceType promoteTo) {
+    if(!isValidPosition(file, rank)) {
+        std::cerr << "Invalid position" << std::endl;
+        return false;
+    }
+    
+    piece* pawn = getPieceAt(file, rank);
+    if(pawn == nullptr) {
+        std::cerr << "No piece at position" << std::endl;
+        return false;
+    }
+    
+    if(pawn->getPieceType() != pieceType::PWAN) {
+        std::cerr << "Piece is not a pawn" << std::endl;
+        return false;
+    }
+    
+    // 폰이 프로모션 가능한 위치에 있는지 확인
+    if(!((pawn->getColor() == colorType::WHITE && rank == BOARD_SIZE - 1) ||
+         (pawn->getColor() == colorType::BLACK && rank == 0))) {
+        std::cerr << "Pawn is not at promotion rank" << std::endl;
+        return false;
+    }
+    
+    // 변환할 기물이 킹이나 폰이면 안 됨
+    if(promoteTo == pieceType::KING || promoteTo == pieceType::PWAN) {
+        std::cerr << "Cannot promote to king or pawn" << std::endl;
+        return false;
+    }
+    
+    // 폰의 스턴을 새 기물에게 이전
+    int pawnStun = pawn->getStunStack();
+    bool pawnStunned = pawn->isStunned();
+    
+    // 폰을 포켓에 돌려놓음
+    auto& pocket = fullPocketForColor(pawn->getColor());
+    pocketIndex pawnIdx = pocketIndex::PAWN;
+    pocket[static_cast<int>(pawnIdx)] += 1;
+    
+    // 새 기물 타입으로 변환
+    pawn->setPieceType(promoteTo);
+    pawn->setStun(pawnStun);
+    if(pawnStunned) {
+        pawn->setStun(pawnStun);  // 스턴 상태는 setStun에서 자동 처리
+    }
+    
+    // 변환된 기물을 포켓에서 빼기 (착수한 것으로 간주)
+    pocketIndex newIdx = pieceTypeToPocketIndex(promoteTo);
+    int newIdxInt = static_cast<int>(newIdx);
+    if(newIdxInt >= 0 && newIdxInt < POCKET_SIZE) {
+        pocket[newIdxInt] = std::max(0, pocket[newIdxInt] - 1);
+    }
+    
+    std::cout << "Pawn promoted at (" << file << ", " << rank << ")" << std::endl;
     return true;
 }
 

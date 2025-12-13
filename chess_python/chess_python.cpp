@@ -27,7 +27,8 @@ pieceType piece_type_from_str(const std::string &s) {
 	if (s == "ALFIL" || s == "alfil" || s == "L") return pieceType::ALFIL;
 	if (s == "FERZ" || s == "ferz" || s == "F") return pieceType::FERZ;
 	if (s == "CENTAUR" || s == "centaur" || s == "C") return pieceType::CENTAUR;
-	if (s == "TESTERROOK" || s == "testerrook" || s == "Tr" || s == "TR") return pieceType::TESTROOK;
+	if (s == "TESTROOK" || s == "testrook" || s == "Tr" || s == "TR") return pieceType::TESTROOK;
+	if (s == "CAMEL" || s == "camel" || s == "Cl" || s == "CL") return pieceType::CAMEL;
 	throw std::invalid_argument("invalid piece type: " + s);
 }
 
@@ -62,11 +63,12 @@ std::string piece_to_str(pieceType t) {
 		case pieceType::FERZ: return "F";
 		case pieceType::CENTAUR: return "C";
 		case pieceType::TESTROOK: return "Tr";
+		case pieceType::CAMEL: return "Cl";
 		default: return "?";
 	}
 }
 
-py::dict pocket_to_dict(const std::array<int, 15> &p) {
+py::dict pocket_to_dict(const std::array<int, POCKET_SIZE> &p) {
 	py::dict d;
 	// Follow pocketIndex ordering from enum.hpp
 	d["K"] = p[0];
@@ -84,6 +86,7 @@ py::dict pocket_to_dict(const std::array<int, 15> &p) {
 	d["F"] = p[12];
 	d["C"] = p[13];
 	d["Tr"] = p[14];
+	d["Cl"] = p[15];
 	return d;
 }
 
@@ -98,8 +101,8 @@ py::dict piece_to_dict(const piece *p) {
 	return d;
 }
 
-std::array<int, 15> dict_to_pocket(const py::dict &d) {
-	std::array<int, 15> p{};
+std::array<int, POCKET_SIZE> dict_to_pocket(const py::dict &d) {
+	std::array<int, POCKET_SIZE> p{};
 	// Defaults align with standard starting set; specials default to 0
 	p[0] = d.contains("K") ? d["K"].cast<int>() : 1;
 	p[1] = d.contains("Q") ? d["Q"].cast<int>() : 1;
@@ -116,6 +119,7 @@ std::array<int, 15> dict_to_pocket(const py::dict &d) {
 	p[12] = d.contains("F") ? d["F"].cast<int>() : 0;
 	p[13] = d.contains("C") ? d["C"].cast<int>() : 0;
 	p[14] = d.contains("Tr") ? d["Tr"].cast<int>() : 0;
+	p[15] = d.contains("Cl") ? d["Cl"].cast<int>() : 0;
 	return p;
 }
 
@@ -185,6 +189,10 @@ public:
 		return board.passAndAddStun(file, rank, delta);
 	}
 
+	bool promote(int file, int rank, const std::string &promoteTo) {
+		return board.promote(file, rank, piece_type_from_str(promoteTo));
+	}
+
 	int white_move_count() const { return board.getWhiteMoveCount(); }
 	int black_move_count() const { return board.getBlackMoveCount(); }
 
@@ -215,6 +223,7 @@ PYBIND11_MODULE(chess_python, m) {
 		.def("board_state", &PyBoard::board_state, "List of pieces with positions and stacks")
 		.def("legal_moves", &PyBoard::legal_moves, py::arg("file"), py::arg("rank"), "Legal moves for a square")
 		.def("add_stun", &PyBoard::add_stun, py::arg("file"), py::arg("rank"), py::arg("delta") = 1, "Pass turn and add stun to a non-king piece")
+		.def("promote", &PyBoard::promote, py::arg("file"), py::arg("rank"), py::arg("promoteTo"), "Promote pawn to another piece")
 		.def("white_move_count", &PyBoard::white_move_count, "Get white's move count")
 		.def("black_move_count", &PyBoard::black_move_count, "Get black's move count")
 		.def("print_board", &PyBoard::print_board);

@@ -47,6 +47,11 @@ const std::vector<std::pair<int, int>> ALFIL_DIRECTIONS = {
     {2, 2}, {2, -2}, {-2, 2}, {-2, -2}
 };
 
+const std::vector<std::pair<int, int>> CAMEL_DIRECTIONS = {
+    {3, 1}, {3, -1}, {-3, 1}, {-3, -1},
+    {1, 3}, {1, -3}, {-1, 3}, {-1, -3}
+};
+
 class piece{
     private:
         int player_idx;
@@ -87,6 +92,7 @@ class piece{
         // setter
         void setFile(int f) { file = f; }
         void setRank(int r) { rank = r; }
+        void setPieceType(pieceType type) { pT = type; }
 
         // 스턴 조작
         void setStun(int s) { 

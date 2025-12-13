@@ -44,7 +44,7 @@ STUN_TEXT = (200, 50, 50)
 
 PIECE_ORDER = [
     "P", "N", "B", "R", "Q", "K",
-    "A", "G", "Kr", "W", "D", "L", "F", "C", "Tr"
+    "A", "G", "Kr", "W", "D", "L", "F", "C", "Tr", "Cl"
 ]
 PIECE_NAMES = {
     "P": "Pawn",
@@ -61,7 +61,8 @@ PIECE_NAMES = {
     "L": "Alfil",
     "F": "Ferz",
     "C": "Centaur",
-    "Tr": "TesterRook",
+    "Tr": "TestRook",
+    "Cl": "Camel",
 }
 
 # Glyphs for nicer board display (white pieces shown; black lowercased where applicable)
@@ -82,23 +83,26 @@ PIECE_GLYPH = {
     "F": "F",    # Ferz
     "C": "C",    # Centaur
     "Tr": "Tr",  # TesterRook
+    "Cl": "Cl",
 }
 
-white_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'G': 1}
-black_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'Tr': 1}
+white_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'Cl': 1}
+black_pocket = {'K': 1, 'Q': 1, 'B': 2, 'N': 2, 'R': 2, 'P': 8, 'Cl': 1}
 
 class EngineState:
     """Bridge between UI state and the C++ engine."""
 
     def __init__(self) -> None:
         self.engine = chess_python.Board(white_pocket, black_pocket) # type: ignore
-        self.mode = "drop"  # move | drop | stun
+        self.mode = "drop"  # move | drop | stun | promote
         self.drop_kind = "K"
         self.selected: Optional[Tuple[int, int]] = None
         self.targets: List[Tuple[int, int]] = []
         self.last_move: Tuple[Tuple[int, int], Tuple[int, int]] = ((-1, -1), (-1, -1))
         self.status = "Drop mode"
         self.game_over = False
+        self.promoting_pos: Optional[Tuple[int, int]] = None  # 프로모션 대기 위치
+        self.promoted_piece: Optional[str] = None  # 프로모션된 기물 표시
         self.refresh()
 
     def refresh(self) -> None:
@@ -139,6 +143,29 @@ class EngineState:
         if ok:
             self.last_move = (src, dst)
             self.setupMovePattern()
+            # 폰 프로모션 체크: 백 rank7, 흑 rank0
+            piece_at_dst = self.engine.getPiece(dx, dy) if hasattr(self.engine, 'getPiece') else None
+            board_state = self.engine.board_state()
+            for p in board_state:
+                if p["file"] == dx and p["rank"] == dy:
+                    if p["type"] == "P" and ((self.turn == "white" and dy == 7) or (self.turn == "black" and dy == 0)):
+                        self.promoting_pos = (dx, dy)
+                        self.mode = "promote"
+                        self.status = "Choose promotion (Tab cycle)"
+                        self.refresh()
+                        return True
+                    break
+            self.engine.next_turn()
+            self.refresh()
+        return ok
+
+    def try_promote(self, x: int, y: int, piece_type: str) -> bool:
+        ok = self.engine.promote(x, y, piece_type)
+        if ok:
+            self.promoted_piece = piece_type  # 승격된 기물 저장
+            self.status = f"Promoted pawn to {piece_type}"
+            self.promoting_pos = None
+            self.mode = "drop"
             self.engine.next_turn()
             self.refresh()
         return ok
@@ -174,6 +201,9 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
                 base = SELECTED
             elif (file, rank) in gs.targets:
                 base = TARGET
+            # 프로모션 모드: 프로모션 위치 색상 반전
+            if gs.mode == "promote" and gs.promoting_pos == (file, rank):
+                base = (255 - base[0], 255 - base[1], 255 - base[2])
             pygame.draw.rect(screen, base, (x, y, SQUARE_SIZE, SQUARE_SIZE))
 
             p = gs.piece_at(file, rank)
@@ -210,11 +240,16 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
         f"White moves: {gs.engine.white_move_count()}",
         f"Black moves: {gs.engine.black_move_count()}",
         f"Mode: {gs.mode}",
-        f"Drop: {PIECE_NAMES.get(gs.drop_kind, '')} ({gs.drop_kind})",
+        f"Drop: {PIECE_NAMES.get(gs.drop_kind, '')} ({gs.drop_kind})" if gs.mode != "promote" else f"Promote to: {PIECE_NAMES.get(gs.drop_kind, '')} ({gs.drop_kind})",
         f"Status: {gs.status}",
+    ]
+    # 프로모션된 기물 표시
+    if gs.promoted_piece:
+        lines.append(f"✓ Promoted: {PIECE_NAMES.get(gs.promoted_piece, gs.promoted_piece)} ({gs.promoted_piece})")
+    lines.extend([
         "",
         "Reserves (White | Black):",
-    ]
+    ])
     for k in PIECE_ORDER:
         white_count = gs.pockets['white'].get(k, 0)
         black_count = gs.pockets['black'].get(k, 0)
@@ -259,11 +294,23 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
 
 def handle_click(gs: EngineState, pos: Tuple[int, int]) -> None:
     sq = board_from_mouse(pos)
+
     if sq is None or gs.game_over:
         return
-    x, y = sq
+    else:
+        x, y = sq
 
-    if gs.mode == "drop":
+    if gs.mode == "promote":
+        if gs.promoting_pos:
+            # 폰/킹은 프로모션 불가
+            if gs.drop_kind in ("P", "K"):
+                gs.status = "Cannot promote to Pawn or King"
+                return
+            if gs.try_promote(gs.promoting_pos[0], gs.promoting_pos[1], gs.drop_kind):
+                pass
+            else:
+                gs.status = "Cannot promote to this piece"
+    elif gs.mode == "drop":
         if gs.pockets[gs.turn].get(gs.drop_kind, 0) <= 0:
             gs.status = "No piece in pocket"
             return
@@ -328,6 +375,7 @@ def main() -> None:
                 elif event.key == pygame.K_r:
                     gs = EngineState()
                     gs.status = "Game reset"
+                    gs.promoted_piece = None
                 elif event.key == pygame.K_RETURN:
                     gs.engine.next_turn()
                     gs.refresh()
@@ -344,19 +392,40 @@ def main() -> None:
                     gs.mode = "stun"
                     gs.status = "Stun mode"
                 # Cycle with Tab / Shift+Tab for scalable selection
+                # 프로모션 모드일 때는 P/K 제외
                 elif event.key == pygame.K_TAB and not pygame.key.get_mods() & pygame.KMOD_SHIFT:
                     try:
                         cur_idx = PIECE_ORDER.index(gs.drop_kind)
                     except ValueError:
                         cur_idx = 0
-                    gs.drop_kind = PIECE_ORDER[(cur_idx + 1) % len(PIECE_ORDER)]
+                    
+                    if gs.mode == "promote":
+                        # 프로모션용: P/K 제외된 리스트
+                        promo_pieces = [p for p in PIECE_ORDER if p not in ("P", "K")]
+                        try:
+                            cur_idx = promo_pieces.index(gs.drop_kind)
+                        except ValueError:
+                            cur_idx = 0
+                        gs.drop_kind = promo_pieces[(cur_idx + 1) % len(promo_pieces)]
+                    else:
+                        gs.drop_kind = PIECE_ORDER[(cur_idx + 1) % len(PIECE_ORDER)]
                     gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
                 elif event.key == pygame.K_TAB and (pygame.key.get_mods() & pygame.KMOD_SHIFT):
                     try:
                         cur_idx = PIECE_ORDER.index(gs.drop_kind)
                     except ValueError:
                         cur_idx = 0
-                    gs.drop_kind = PIECE_ORDER[(cur_idx - 1) % len(PIECE_ORDER)]
+                    
+                    if gs.mode == "promote":
+                        # 프로모션용: P/K 제외된 리스트
+                        promo_pieces = [p for p in PIECE_ORDER if p not in ("P", "K")]
+                        try:
+                            cur_idx = promo_pieces.index(gs.drop_kind)
+                        except ValueError:
+                            cur_idx = 0
+                        gs.drop_kind = promo_pieces[(cur_idx - 1) % len(promo_pieces)]
+                    else:
+                        gs.drop_kind = PIECE_ORDER[(cur_idx - 1) % len(PIECE_ORDER)]
                     gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
                 # Cycle selection for larger indexes
                 elif event.key in (pygame.K_RIGHT, pygame.K_PERIOD, pygame.K_RIGHTBRACKET):

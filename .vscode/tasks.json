@@ -48,6 +48,18 @@
 			"type": "shell",
 			"command": "true",
 			"group": "build"
+		},
+		{
+			"label": "Build with promotion",
+			"type": "shell",
+			"command": "pushd /home/sjh100/바탕화면/project_bc/build >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
+		},
+		{
+			"label": "Rebuild promotion",
+			"type": "shell",
+			"command": "pushd /home/sjh100/바탕화면/project_bc/build >/dev/null && make -j4 && popd >/dev/null",
+			"group": "build"
 		}
 	]
 }
