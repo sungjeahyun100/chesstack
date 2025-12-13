@@ -17,13 +17,26 @@ import pygame
 # Ensure the locally built extension (build/chess_python*.so) is importable.
 _ROOT = Path(__file__).resolve().parent
 _BUILD = _ROOT / "build"
-if _BUILD.exists() and str(_BUILD) not in sys.path:
-    sys.path.insert(0, str(_BUILD))
+_BUILD_RELEASE = _BUILD / "Release"
+_BUILD_DEBUG = _BUILD / "Debug"
+
+for p in [
+    _BUILD,
+    _BUILD_RELEASE,
+    _BUILD_DEBUG,
+]:
+    if p.exists():
+        sp = str(p)
+        if sp not in sys.path:
+            sys.path.insert(0, sp)
 
 try:
     import chess_python  # pybind11 확장 모듈
+    # 디버그: 로드된 모듈의 실제 파일 위치를 출력
+    print(f"Loaded chess_python from: {getattr(chess_python, '__file__', 'unknown')}")
 except ImportError:
     print("chess_python 모듈을 찾을 수 없습니다. 빌드 후 다시 실행하세요.")
+    print(f"sys.path head: {sys.path[:5]}")
     sys.exit(1)
 
 BOARD_SIZE = 8

@@ -15,10 +15,10 @@ rem Find pybind11 CMake dir via Python
 set P11=
 for /f "delims=" %%i in ('python -c "import pybind11; print(pybind11.get_cmake_dir())"') do set P11=%%i
 if not defined P11 (
-  for /f "delims=" %%i in ('python -c "import pybind11, pathlib; print(pathlib.Path(pybind11.__file__).parent / 'share' / 'cmake' / 'pybind11')"') do set P11=%%i
+  for /f "delims=" %%i in ('python -c "import pybind11, pathlib; print(pathlib.Path(pybind11.__file__).parent / 'share' / 'cmake' / 'pybind11')"' ) do set P11=%%i
 )
 if not defined P11 (
-  echo Could not locate pybind11 CMake dir. Ensure ^"pip install pybind11^" in this Python environment.
+  echo Could not locate pybind11 CMake dir. Ensure "pip install pybind11" in this Python environment.
   exit /b 1
 )
 
