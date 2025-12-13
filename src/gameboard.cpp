@@ -236,15 +236,6 @@ bool bc_board::placePiece(pieceType type, colorType color, int file, int rank) {
         return false;
     }
     
-    // 수 카운트 증가 및 해당 색상 기물들의 스턴 스택 감소 (착수 전에 먼저 수행)
-    if(color == colorType::WHITE) {
-        whiteMoveCount++;
-        applyStunTickForColor(colorType::WHITE);
-    } else {
-        blackMoveCount++;
-        applyStunTickForColor(colorType::BLACK);
-    }
-    
     // pieces 컨테이너에 새로운 기물 추가
     pieces.emplace_back(type, color, file, rank, pieces.size());
     piece* placed = &pieces.back();
@@ -312,15 +303,9 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
         return false;
     }
     
-    // 수 카운트 증가 및 해당 색상 기물들의 스턴 스택 감소 (이동 전에 먼저 수행)
+    // 이동 전에 현재 색상의 스턴 스택 감소 (턴 시작 처리)
     colorType movingColor = movingPiece->getColor();
-    if(movingColor == colorType::WHITE) {
-        whiteMoveCount++;
-        applyStunTickForColor(colorType::WHITE);
-    } else {
-        blackMoveCount++;
-        applyStunTickForColor(colorType::BLACK);
-    }
+    applyStunTickForColor(movingColor);
     
     // TAKEJUMP: 중간 기물도 캡처
     if(selectedMove->captureJumped && selectedMove->jumpedFile >=0 && selectedMove->jumpedRank >=0) {
@@ -453,16 +438,6 @@ bool bc_board::passAndAddStun(int file, int rank, int delta) {
         std::cerr << "Cannot add stun to king" << std::endl;
         return false;
     }
-
-    // 수 카운트 증가 및 해당 색상 기물들의 스턴 스택 감소 (스턴 추가 전에 먼저 수행)
-    colorType currentColor = currentPlayerColor();
-    if(currentColor == colorType::WHITE) {
-        whiteMoveCount++;
-        applyStunTickForColor(colorType::WHITE);
-    } else {
-        blackMoveCount++;
-        applyStunTickForColor(colorType::BLACK);
-    }
     
     target->addStun(delta);
     activePieceThisTurn = target;
@@ -500,7 +475,17 @@ bool bc_board::removePiece(int file, int rank) {
 
 // 다음 턴
 void bc_board::nextTurn() {
-    // 합법 이동 재계산
+    // 현재 플레이어의 수를 마무리하며 턴을 넘긴다
+    colorType current = currentPlayerColor();
+    if(current == colorType::WHITE) {
+        whiteMoveCount++;
+    } else {
+        blackMoveCount++;
+    }
+
+    applyStunTickForColor(current);
+
+    // 합법 이동 재계산 및 턴 상태 초기화
     updateAllLegalMoves();
     resetTurnState();
 }

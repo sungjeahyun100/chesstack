@@ -1,6 +1,9 @@
 # 변형체스 보드게임
 
-이 프로젝트는 체스의 규칙에 바둑의 착수 개념을 더한 일종의 변형체스를 만드는 것이 목표이다.
+python version: 3.12.3
+cmake version: 3.28.3
+
+이 프로젝트는 체스의 규칙에 바둑의 착수 개념을 더한 일종의 변형체스를 만드는 것이 목표이다. //더 자세한 규칙은 워크스페이스 파일 경로 최상단에 있는 rule.md파일을 참고하세요.
 
 규칙:
 1. 두 플레이어는 8*8의 빈 보드에서부터 시작한다.
@@ -121,13 +124,31 @@ project_bc/
 
 ### 빌드 및 실행
 ```bash
-cd project_bc
+cd chesstack
 mkdir -p build && cd build
 cmake .. -DBUILD_PYTHON_BINDINGS=ON
 make -j4
 cd ..
 python3 play.py
 ```
+
+### Windows (Visual Studio + pip pybind11)
+- PowerShell에서:
+```powershell
+cd chesstack\scripts
+./build_windows.ps1 -Build
+```
+- 또는 CMD에서:
+```bat
+cd chesstack\scripts
+build_windows.bat
+```
+위 스크립트는 현재 Python 환경에서 pybind11의 CMake 경로를 자동으로 탐색해 `-Dpybind11_DIR=...`로 전달합니다. 반드시 동일한 Python/가상환경에서 `pip install pybind11`이 되어 있어야 합니다.
+
+#### 전제 조건
+
+ - 동일한 Python/가상환경에서 pip install pybind11이 설치되어 있어야 합니다.
+ - Visual Studio C++ 툴체인이 설치되어 있어야 합니다. 기본 Generator는 “Visual Studio 17 2022”, 아키텍처는 x64로 설정되어 있습니다.
 
 ### 키보드 컨트롤
 - **D**: Drop 모드 (기물 착수)

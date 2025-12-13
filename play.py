@@ -3,7 +3,7 @@
 
 - 드롭/이동/스턴 모두 pybind11 바인딩을 통해 수행합니다.
 - 합법 수는 엔진의 legal_moves를 사용합니다.
-- 기본 조작: D=드롭, M=이동, S=스턴, Enter=턴 넘기기, R=리셋, Q/Esc=종료, 숫자키 1~6으로 드롭 기물 선택.
+- 기본 조작: D=드롭, M=이동, S=스턴, 턴 종료는 END TURN 버튼 클릭, R=리셋, Q/Esc=종료, 숫자키 1~6으로 드롭 기물 선택.
 """
 
 from __future__ import annotations
@@ -64,6 +64,9 @@ PIECE_NAMES = {
     "Tr": "TestRook",
     "Cl": "Camel",
 }
+
+# Button dimensions and positions
+END_TURN_BTN = pygame.Rect(BOARD_PX + 10, BOARD_PX - 60, INFO_WIDTH - 20, 50)
 
 # Glyphs for nicer board display (white pieces shown; black lowercased where applicable)
 PIECE_GLYPH = {
@@ -132,7 +135,6 @@ class EngineState:
         if ok:
             self.last_move = ((-1, -1), (x, y))
             self.setupMovePattern()
-            self.engine.next_turn()
             self.refresh()
         return ok
 
@@ -155,7 +157,6 @@ class EngineState:
                         self.refresh()
                         return True
                     break
-            self.engine.next_turn()
             self.refresh()
         return ok
 
@@ -166,7 +167,6 @@ class EngineState:
             self.status = f"Promoted pawn to {piece_type}"
             self.promoting_pos = None
             self.mode = "drop"
-            self.engine.next_turn()
             self.refresh()
         return ok
 
@@ -174,7 +174,6 @@ class EngineState:
         ok = self.engine.add_stun(x, y, 1)
         if ok:
             self.last_move = ((-1, -1), (x, y))
-            self.engine.next_turn()
             self.refresh()
         return ok
 
@@ -262,7 +261,7 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
             "Controls:",
             "  M move | D drop | S stun",
             "  Tab/Shift+Tab cycle pieces",
-            "  Enter end turn",
+            "  Click END TURN to finish turn",
             "  R reset | Q/Esc quit",
             "  ←/→ [,] also cycle",
         ]
@@ -273,6 +272,13 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
         surf = info_font.render(line, True, PANEL_TEXT)
         screen.blit(surf, (BOARD_PX + 10, y))
         y += 22
+
+    # End Turn button
+    pygame.draw.rect(screen, (50, 100, 50), END_TURN_BTN)
+    pygame.draw.rect(screen, (100, 200, 100), END_TURN_BTN, 2)
+    btn_text = info_font.render("END TURN", True, (255, 255, 255))
+    btn_rect = btn_text.get_rect(center=END_TURN_BTN.center)
+    screen.blit(btn_text, btn_rect)
 
     # Selected piece detail
     if gs.selected:
@@ -293,6 +299,15 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
 
 
 def handle_click(gs: EngineState, pos: Tuple[int, int]) -> None:
+    # Check if END TURN button was clicked
+    if END_TURN_BTN.collidepoint(pos):
+        gs.engine.next_turn()
+        gs.refresh()
+        gs.selected = None
+        gs.targets = []
+        gs.status = "Turn passed"
+        return
+
     sq = board_from_mouse(pos)
 
     if sq is None or gs.game_over:
@@ -376,12 +391,6 @@ def main() -> None:
                     gs = EngineState()
                     gs.status = "Game reset"
                     gs.promoted_piece = None
-                elif event.key == pygame.K_RETURN:
-                    gs.engine.next_turn()
-                    gs.refresh()
-                    gs.selected = None
-                    gs.targets = []
-                    gs.status = "Turn passed"
                 elif event.key == pygame.K_m:
                     gs.mode = "move"
                     gs.status = "Move mode"
