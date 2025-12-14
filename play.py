@@ -229,6 +229,13 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
                 rect = text.get_rect(center=(x + SQUARE_SIZE // 2, y + SQUARE_SIZE // 2))
                 screen.blit(text, rect)
 
+                # 이동 스택을 좌상단에 파란색으로 표시 (0이면 생략)
+                if p["move_stack"] > 0: # type: ignore
+                    move_surf = info_font.render(str(p["move_stack"]), True, (100, 150, 255))  # 파란색
+                    move_rect = move_surf.get_rect()
+                    move_rect.topleft = (x + 4, y + 4)
+                    screen.blit(move_surf, move_rect)
+
                 # 스턴 스택을 우상단에 표시 (0이면 생략)
                 if p["stun"] > 0: # type: ignore
                     stun_surf = info_font.render(str(p["stun"]), True, STUN_TEXT)

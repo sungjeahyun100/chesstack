@@ -243,6 +243,7 @@ bool bc_board::placePiece(pieceType type, colorType color, int file, int rank) {
     // 초기 스턴 설정
     int initStun = computeInitialStun(type, color, rank);
     placed->setStun(initStun);
+    placed->setMoveStack(0); // 착수 후 이동 스택은 0부터 시작
     
     // 보드에 포인터 저장
     board[file][rank] = placed;
@@ -284,6 +285,12 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
     // 스턴 확인: 스턴 상태이면 이 턴에서 움직일 수 없음
     if(movingPiece->isStunned()) {
         std::cerr << "Piece is stunned" << std::endl;
+        return false;
+    }
+    
+    // 이동 스택 확인: 이동 스택이 있어야 이동 가능
+    if(!movingPiece->consumeMoveStack(1)) {
+        std::cerr << "No move stack available" << std::endl;
         return false;
     }
     
@@ -351,6 +358,9 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
     // 이동 로그 저장
     log.push_back(PGN(fromFile, fromRank, toFile, toRank, movingPiece->getPieceType(), movingPiece->getColor(), (targetPiece != nullptr)));
     
+    // 이동한 기물의 합법 이동 업데이트
+    updatePieceLegalMoves(movingPiece);
+    
     return true;
 }
 
@@ -387,6 +397,7 @@ bool bc_board::promote(int file, int rank, pieceType promoteTo) {
     
     // 폰의 스턴을 새 기물에게 이전
     int pawnStun = pawn->getStunStack();
+    int pawnMoveStack = pawn->getMoveStack(); // 이동 스택도 함께 이전
     bool pawnStunned = pawn->isStunned();
     
     // 폰을 포켓에 돌려놓음
@@ -397,6 +408,7 @@ bool bc_board::promote(int file, int rank, pieceType promoteTo) {
     // 새 기물 타입으로 변환
     pawn->setPieceType(promoteTo);
     pawn->setStun(pawnStun);
+    pawn->setMoveStack(pawnMoveStack); // 이동 스택도 설정
     if(pawnStunned) {
         pawn->setStun(pawnStun);  // 스턴 상태는 setStun에서 자동 처리
     }
@@ -429,11 +441,7 @@ bool bc_board::passAndAddStun(int file, int rank, int delta) {
         std::cerr << "No piece at position" << std::endl;
         return false;
     }
-    // 스턴은 상대 기물에만 적용 (자신 기물은 허용하지 않음)
-    if(target->getColor() == currentPlayerColor()) {
-        std::cerr << "Cannot stun your own piece" << std::endl;
-        return false;
-    }
+    // 킹에는 스턴을 먹일 수 없음
     if(target->getPieceType() == pieceType::KING) {
         std::cerr << "Cannot add stun to king" << std::endl;
         return false;

@@ -98,6 +98,7 @@ py::dict piece_to_dict(const piece *p) {
 	d["color"] = color_to_str(p->getColor());
 	d["stun"] = p->getStunStack();
 	d["stunned"] = p->isStunned();
+	d["move_stack"] = p->getMoveStack();
 	return d;
 }
 

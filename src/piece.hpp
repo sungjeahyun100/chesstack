@@ -57,6 +57,7 @@ class piece{
         int player_idx;
         int stun_stack; // 스턴 스택: 0 이상
         bool is_stunned; // 스턴 상태: true면 현재 스턴 중
+        int move_stack; // 이동 스택: 한 턴에 여러 번 움직일 수 있는 횟수
         pieceType pT;
         int file, rank; // 보드 위치
         colorType cT;
@@ -76,6 +77,7 @@ class piece{
         int getPlayerIdx() const { return player_idx; }
         int getStunStack() const { return stun_stack; }
         bool isStunned() const { return is_stunned; }
+        int getMoveStack() const { return move_stack; }
         const std::vector<PGN>& getLegalMoves() const { return legal_move; }
         const std::vector<legalMoveChunk>& getMovePatterns() const { return movePatterns; }
         
@@ -93,7 +95,6 @@ class piece{
         void setFile(int f) { file = f; }
         void setRank(int r) { rank = r; }
         void setPieceType(pieceType type) { pT = type; }
-
         // 스턴 조작
         void setStun(int s) { 
             stun_stack = std::max(0, s);
@@ -110,11 +111,31 @@ class piece{
             }
         }
 
-        // 스택 틱: 각 플레이어가 수를 둘 때마다 스턴 스택 1 감소
+        // 스택 틱: 각 플레이어가 수를 둘 때마다 스턴 스택 1 감소, 그러면 이동 스택 1 증가
         void applyStunTick() {
             if(stun_stack > 0) {
                 stun_stack--;
                 is_stunned = (stun_stack > 0);
+                move_stack++; // 스턴 감소할 때마다 이동 스택 1 증가
             }
+        }
+        
+        // 이동 스택 소비
+        bool consumeMoveStack(int amount = 1) {
+            if(move_stack >= amount) {
+                move_stack -= amount;
+                return true;
+            }
+            return false;
+        }
+        
+        // 이동 스택 설정
+        void setMoveStack(int m) {
+            move_stack = std::max(0, m);
+        }
+        
+        // 이동 스택 추가
+        void addMoveStack(int amount) {
+            move_stack = std::max(0, move_stack + amount);
         }
 };
