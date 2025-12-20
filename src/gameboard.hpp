@@ -36,7 +36,6 @@ class bc_board{
         
         piece* getPieceAt(int file, int rank) const;
         int computeInitialStun(pieceType type, colorType color, int rank) const;
-        void decayStunAllAndChargeMoves();
         void resetTurnState();
         void resetPockets();
         void setPocketStock(colorType color, const std::array<int, POCKET_SIZE>& stock);

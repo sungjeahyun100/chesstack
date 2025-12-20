@@ -192,11 +192,6 @@ void bc_board::applyStunTickForColor(colorType color) {
     }
 }
 
-// 스턴은 movePiece에서 직접 관리됨
-void bc_board::decayStunAllAndChargeMoves() {
-    // 아무것도 하지 않음
-}
-
 // 기물 착수
 bool bc_board::placePiece(pieceType type, colorType color, int file, int rank) {
     if(!isValidPosition(file, rank)) {
@@ -513,11 +508,6 @@ bool bc_board::passAndAddStun(int file, int rank, int delta) {
     piece* target = getPieceAt(file, rank);
     if(target == nullptr) {
         std::cerr << "No piece at position" << std::endl;
-        return false;
-    }
-    // 킹에는 스턴을 먹일 수 없음
-    if(target->getPieceType() == pieceType::KING) {
-        std::cerr << "Cannot add stun to king" << std::endl;
         return false;
     }
     

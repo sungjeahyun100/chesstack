@@ -134,6 +134,26 @@ class EngineState:
             "white": self.engine.pocket("white"),
             "black": self.engine.pocket("black"),
         }
+        self._check_royal_elimination()
+
+    def _check_royal_elimination(self) -> None:
+        """If a side has no royal piece after the opening turn, end the game."""
+        total_moves = self.engine.white_move_count() + self.engine.black_move_count()
+        if total_moves < 2:  # 첫 턴(아직 턴 종료 전)에는 판정하지 않음
+            return
+
+        has_white_royal = any(p.get("royal") and p.get("color") == "white" for p in self.pieces.values())
+        has_black_royal = any(p.get("royal") and p.get("color") == "black" for p in self.pieces.values())
+
+        if not has_white_royal and not has_black_royal:
+            self.status = "Draw: no royals"  # 이론상 동시 소멸 방지
+            self.game_over = True
+        elif not has_white_royal:
+            self.status = "Black wins (white lost royal)"
+            self.game_over = True
+        elif not has_black_royal:
+            self.status = "White wins (black lost royal)"
+            self.game_over = True
 
     def setupMovePattern(self) -> None:
         self.engine.setupAllPieceMovePattern()
@@ -674,6 +694,8 @@ def main() -> None:
             elif event.type == pygame.MOUSEMOTION:
                 sq = board_from_mouse(event.pos)
                 gs.hovered = sq
+            elif gs.game_over == True:
+                gs.refresh()
 
         draw(gs, screen, font, info_font)
 
