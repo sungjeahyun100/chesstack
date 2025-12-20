@@ -141,20 +141,23 @@ piece* bc_board::getPieceAt(int file, int rank) const {
     return board[file][rank];
 }
 
-// 착수 시 초기 스턴 계산: 폰은 랭크에 따라, 다른 기물은 스턴 스택 1
+// 착수 시 초기 스턴 계산: 폰은 랭크별, 기타는 기물 점수 사용
 int bc_board::computeInitialStun(pieceType type, colorType color, int rank) const {
-    if(type != pieceType::PWAN) {
-        return 1; // 폰이 아니면 스턴 1
+    if(type == pieceType::PWAN) {
+        // 폰: 랭크에 따라 8~2로 부여 (최소 2로 클램프)
+        if(color == colorType::WHITE) {
+            // 백: rank0(1랭크)=8, rank6(7랭크)=2
+            int val = 8 - rank;
+            return std::clamp(val, 2, 8);
+        } else {
+            // 흑: rank7(8랭크)=8, rank1(2랭크)=2
+            int val = rank + 1;
+            return std::clamp(val, 2, 8);
+        }
     }
-    
-    // 폰의 경우: 랭크에 따라 스턴 설정
-    if(color == colorType::WHITE) {
-        // 백: rank1(0)=0stun ~ rank7(6)=6stun
-        return std::min(rank, 6);
-    } else {
-        // 흑: rank8(7)=0stun ~ rank2(1)=6stun
-        return std::min(7 - rank, 6);
-    }
+
+    // 기타 기물: 기물 점수 테이블
+    return pieceScore(type);
 }
 
 // 턴 상태 초기화
@@ -333,6 +336,7 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
         piece* midPiece = getPieceAt(selectedMove->jumpedFile, selectedMove->jumpedRank);
         if(midPiece != nullptr) {
             movingPiece->addStun(midPiece->getStunStack());
+            movingPiece->addMoveStack(midPiece->getMoveStack()); // 이동 스택도 전가
             pieceType capturedType = midPiece->getPieceType();
             pocketIndex capturedPIdx = pieceTypeToPocketIndex(capturedType);
             auto& pocketCaptured = fullPocketForColor(movingColor);
@@ -346,6 +350,7 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
     piece* targetPiece = getPieceAt(toFile, toRank);
     if(targetPiece != nullptr) {
         const int capturedStun = targetPiece->getStunStack(); // 로얄 스턴 분배 전에 캡처 피스 스턴을 저장
+        const int capturedMove = targetPiece->getMoveStack(); // 이동 스택도 함께 이전
 
         // 로얄 피스 캡처 시: 같은 색 모든 기물에 스턴 +3 (로얄 피스 자신 포함)
         if(targetPiece->isRoyal()) {
@@ -359,6 +364,7 @@ bool bc_board::movePiece(int fromFile, int fromRank, int toFile, int toRank) {
 
         // 스턴 이전: 잡힌 기물의 (로얄 보정 전) 스턴을 이동 기물에게 더한다
         movingPiece->addStun(capturedStun);
+        movingPiece->addMoveStack(capturedMove);
         
         // 잡힌 기물을 포켓에 추가
         pieceType capturedType = targetPiece->getPieceType();
@@ -463,24 +469,12 @@ bool bc_board::promote(int file, int rank, pieceType promoteTo) {
     int pawnMoveStack = pawn->getMoveStack(); // 이동 스택도 함께 이전
     bool pawnStunned = pawn->isStunned();
     
-    // 폰을 포켓에 돌려놓음
-    auto& pocket = fullPocketForColor(pawn->getColor());
-    pocketIndex pawnIdx = pocketIndex::PAWN;
-    pocket[static_cast<int>(pawnIdx)] += 1;
-    
     // 새 기물 타입으로 변환
     pawn->setPieceType(promoteTo);
     pawn->setStun(pawnStun);
     pawn->setMoveStack(pawnMoveStack); // 이동 스택도 설정
     if(pawnStunned) {
         pawn->setStun(pawnStun);  // 스턴 상태는 setStun에서 자동 처리
-    }
-    
-    // 변환된 기물을 포켓에서 빼기 (착수한 것으로 간주)
-    pocketIndex newIdx = pieceTypeToPocketIndex(promoteTo);
-    int newIdxInt = static_cast<int>(newIdx);
-    if(newIdxInt >= 0 && newIdxInt < POCKET_SIZE) {
-        pocket[newIdxInt] = std::max(0, pocket[newIdxInt] - 1);
     }
     
     std::cout << "Pawn promoted at (" << file << ", " << rank << ")" << std::endl;
@@ -490,6 +484,9 @@ bool bc_board::promote(int file, int rank, pieceType promoteTo) {
         setupPiecePatterns(&p);
     }
     updateAllLegalMoves();
+
+    
+
     return true;
 }
 
@@ -754,10 +751,10 @@ void bc_board::setupPosition(
 
 // 턴 설정: whiteMoveCount/blackMoveCount로 현재 턴 결정 (whiteMoveCount==blackMoveCount -> 백 차례)
 void bc_board::setTurn(colorType turn) {
-    whiteMoveCount = 0;
-    blackMoveCount = 0;
+    whiteMoveCount = 1;
+    blackMoveCount = 1;
     if(turn == colorType::BLACK) {
-        whiteMoveCount = 1; // 백이 한 번 둔 것으로 취급하여 흑 차례로 설정
+        whiteMoveCount = 2; // 백이 한 번 둔 것으로 취급하여 흑 차례로 설정
     }
 }
 

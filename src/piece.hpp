@@ -3,6 +3,7 @@
 #include <vector>
 #include <enum.hpp>
 #include <moves.hpp>
+#include <algorithm>
 
 // 각 기물의 이동 방향 정보 (file, rank 오프셋)
 // 나이트: JUMP 이동
@@ -51,6 +52,29 @@ const std::vector<std::pair<int, int>> CAMEL_DIRECTIONS = {
     {3, 1}, {3, -1}, {-3, 1}, {-3, -1},
     {1, 3}, {1, -3}, {-1, 3}, {-1, -3}
 };
+
+// 기물 점수 테이블 (스턴 스택 부여에 사용)
+inline int pieceScore(pieceType t) {
+    switch(t) {
+        case pieceType::KING:        return 4;
+        case pieceType::QUEEN:       return 9;
+        case pieceType::ROOK:        return 5;
+        case pieceType::BISHOP:      return 3;
+        case pieceType::KNIGHT:      return 3;
+        case pieceType::AMAZON:      return 13;
+        case pieceType::GRASSHOPPER: return 4;
+        case pieceType::KNIGHTRIDER: return 7;
+        case pieceType::ARCHBISHOP:  return 6;
+        case pieceType::DABBABA:     return 2;
+        case pieceType::ALFIL:       return 2;
+        case pieceType::FERZ:        return 1;
+        case pieceType::CENTAUR:     return 5;
+        case pieceType::TESTROOK:    return 6;
+        case pieceType::CAMEL:       return 3;
+        case pieceType::PWAN:        return 0; // 폰은 랭크 기반 별도 규칙
+        default: return 1;
+    }
+}
 
 class piece{
     private:

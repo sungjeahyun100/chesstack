@@ -141,9 +141,16 @@ class EngineState:
         total_moves = self.engine.white_move_count() + self.engine.black_move_count()
         if total_moves < 2:  # 첫 턴(아직 턴 종료 전)에는 판정하지 않음
             return
-
-        has_white_royal = any(p.get("royal") and p.get("color") == "white" for p in self.pieces.values())
-        has_black_royal = any(p.get("royal") and p.get("color") == "black" for p in self.pieces.values())
+        
+        if any(p.get("color") == "white" for p in self.pieces.values()) is not False:
+            has_white_royal = any(p.get("royal") and p.get("color") == "white" for p in self.pieces.values())
+        else:
+            has_white_royal = False
+        
+        if any(p.get("color") == "white" for p in self.pieces.values()) is not False:
+            has_black_royal = any(p.get("royal") and p.get("color") == "black" for p in self.pieces.values())
+        else:
+            has_black_royal = False
 
         if not has_white_royal and not has_black_royal:
             self.status = "Draw: no royals"  # 이론상 동시 소멸 방지
@@ -215,7 +222,6 @@ class EngineState:
         return ok
 
     def try_succession(self, x: int, y: int) -> bool:
-        """왕을 새로운 기물로 대체"""
         try:
             ok = self.engine.succeed_royal_piece(x, y)
             if ok:
@@ -481,6 +487,12 @@ def handle_click(gs: EngineState, pos: Tuple[int, int]) -> None:
 
     # Check if END TURN button was clicked
     if end_btn.collidepoint(pos):
+        if gs.status == "Turn passed":
+            gs.mode = "alert: not allowed"
+            return
+        if gs.engine.white_move_count() == 0 and gs.engine.pocket("white")["K"] is not 0:
+            gs.mode = "alert: not allowed"
+            return
         gs.engine.next_turn()
         gs.refresh()
         gs.selected = None
