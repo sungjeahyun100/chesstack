@@ -125,6 +125,13 @@ py::dict piece_to_dict(const piece *p) {
 	d["stun"] = p->getStunStack();
 	d["stunned"] = p->isStunned();
 	d["move_stack"] = p->getMoveStack();
+	d["royal"] = p->isRoyal();
+	const auto disguise = p->getDisguisedAs();
+	if (disguise == pieceType::NONE) {
+		d["disguised_as"] = ""; // 빈 문자열이면 변장 없음
+	} else {
+		d["disguised_as"] = piece_to_str(disguise);
+	}
 	return d;
 }
 
@@ -220,6 +227,29 @@ public:
 		return board.promote(file, rank, piece_type_from_str(promoteTo));
 	}
 
+	bool succeed_royal_piece(int file, int rank) {
+		// file, rank에 있는 기물이 새 로얄 피스가 됨
+		colorType currentColor = (board.getWhiteMoveCount() == board.getBlackMoveCount()) ? colorType::WHITE : colorType::BLACK;
+		if (!board.hasRoyalPiece(currentColor)) {
+			return false; // 현재 로얄 피스가 없으면 불가능
+		}
+		piece* successor = board.getPiece(file, rank);
+		if (!successor || successor->getColor() != currentColor || successor->getPieceType() == pieceType::KING) {
+			return false; // 기물이 없거나 왕이면 불가능
+		}
+		return board.succeedRoyalPiece(file, rank, currentColor);
+	}
+
+	bool disguise_piece(int file, int rank, const std::string &disguise_as) {
+		// file, rank에 있는 왕(로얄 피스)이 disguise_as로 변장
+		colorType currentColor = (board.getWhiteMoveCount() == board.getBlackMoveCount()) ? colorType::WHITE : colorType::BLACK;
+		piece* royal = board.getPiece(file, rank);
+		if (!royal || !royal->isRoyal() || royal->getColor() != currentColor) {
+			return false; // 기물이 없거나 왕이 아니면 불가능
+		}
+		return board.disguisePiece(file, rank, piece_type_from_str(disguise_as));
+	}
+
 	int white_move_count() const { return board.getWhiteMoveCount(); }
 	int black_move_count() const { return board.getBlackMoveCount(); }
 
@@ -307,6 +337,8 @@ PYBIND11_MODULE(chess_python, m) {
 		.def("legal_moves", &PyBoard::legal_moves, py::arg("file"), py::arg("rank"), "Legal moves for a square")
 		.def("add_stun", &PyBoard::add_stun, py::arg("file"), py::arg("rank"), py::arg("delta") = 1, "Pass turn and add stun to a non-king piece")
 		.def("promote", &PyBoard::promote, py::arg("file"), py::arg("rank"), py::arg("promoteTo"), "Promote pawn to another piece")
+		.def("succeed_royal_piece", &PyBoard::succeed_royal_piece, py::arg("file"), py::arg("rank"), "Make a piece the new royal piece")
+		.def("disguise_piece", &PyBoard::disguise_piece, py::arg("file"), py::arg("rank"), py::arg("disguise_as"), "Disguise royal piece as another piece type")
 		.def("white_move_count", &PyBoard::white_move_count, "Get white's move count")
 		.def("black_move_count", &PyBoard::black_move_count, "Get black's move count")
 		.def("setup_position", &PyBoard::setup_position, py::arg("piece_list"), "Setup custom position from list of pieces")

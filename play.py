@@ -46,6 +46,7 @@ SQUARE_SIZE = 80
 BOARD_PX = BOARD_SIZE * SQUARE_SIZE
 INFO_WIDTH = 340
 WINDOW_SIZE = (BOARD_PX + INFO_WIDTH, BOARD_PX)
+DEBUG_EXTRA_WIDTH = 260  # 추가 디버그 패널 폭
 
 LIGHT = (238, 238, 210)
 DARK = (118, 150, 86)
@@ -80,8 +81,7 @@ PIECE_NAMES = {
     "Cl": "Camel",
 }
 
-# Button dimensions and positions
-END_TURN_BTN = pygame.Rect(BOARD_PX + 10, BOARD_PX - 60, INFO_WIDTH - 20, 50)
+# Button layout will be computed dynamically based on panel width
 
 # Glyphs for nicer board display (white pieces shown; black lowercased where applicable)
 PIECE_GLYPH = {
@@ -112,7 +112,7 @@ class EngineState:
 
     def __init__(self) -> None:
         self.engine = chess_python.Board(white_pocket, black_pocket) # type: ignore
-        self.mode = "drop"  # move | drop | stun | promote
+        self.mode = "drop"  # move | drop | stun | promote | succession | disguise
         self.drop_kind = "K"
         self.selected: Optional[Tuple[int, int]] = None
         self.targets: List[Tuple[int, int]] = []
@@ -121,6 +121,8 @@ class EngineState:
         self.game_over = False
         self.promoting_pos: Optional[Tuple[int, int]] = None  # 프로모션 대기 위치
         self.promoted_piece: Optional[str] = None  # 프로모션된 기물 표시
+        self.debug: bool = True  # 기본값을 확장 뷰로
+        self.hovered: Optional[Tuple[int, int]] = None
         self.refresh()
 
     def refresh(self) -> None:
@@ -192,6 +194,30 @@ class EngineState:
             self.refresh()
         return ok
 
+    def try_succession(self, x: int, y: int) -> bool:
+        """왕을 새로운 기물로 대체"""
+        try:
+            ok = self.engine.succeed_royal_piece(x, y)
+            if ok:
+                self.last_move = ((-1, -1), (x, y))
+                self.refresh()
+            return ok
+        except AttributeError:
+            # Python binding이 아직 없으면 실패
+            return False
+
+    def try_disguise(self, x: int, y: int, piece_type: str) -> bool:
+        """왕을 다른 기물로 변장"""
+        try:
+            ok = self.engine.disguise_piece(x, y, piece_type)
+            if ok:
+                self.last_move = ((-1, -1), (x, y))
+                self.refresh()
+            return ok
+        except AttributeError:
+            # Python binding이 아직 없으면 실패
+            return False
+
     def load_position(self, position_name: str) -> bool:
         """테스트 포지션 로드"""
         pos_data = test_positions.get_position(position_name)
@@ -203,10 +229,10 @@ class EngineState:
             self.engine.setup_position(pos_data)
             self.setupMovePattern()
             self.refresh()
-            self.status = f"Loaded position: {position_name}"
+            self.status = f"pos:{position_name}"
             return True
         except Exception as e:
-            self.status = f"Error loading position: {e}"
+            self.status = f"Err loading position: {e}"
             return False
 
 
@@ -219,7 +245,25 @@ def board_from_mouse(pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
     return x, y
 
 
+def layout_panel_width(gs: EngineState) -> int:
+    # 항상 확장 폭 유지 (디버그 토글과 무관)
+    return INFO_WIDTH + DEBUG_EXTRA_WIDTH
+
+
+def layout_buttons(gs: EngineState) -> Tuple[pygame.Rect, pygame.Rect]:
+    panel_width = layout_panel_width(gs)
+    debug_btn = pygame.Rect(BOARD_PX + 10, BOARD_PX - 120, panel_width - 20, 50)
+    end_btn = pygame.Rect(BOARD_PX + 10, BOARD_PX - 60, panel_width - 20, 50)
+    return debug_btn, end_btn
+
+
 def draw(gs: EngineState, screen, font, info_font) -> None:
+    panel_width = layout_panel_width(gs)
+    debug_btn, end_btn = layout_buttons(gs)
+    debug_panel = gs.debug
+    base_x = BOARD_PX + 10
+    debug_x = BOARD_PX + INFO_WIDTH + 10 if debug_panel else base_x
+
     # Board squares
     for file in range(BOARD_SIZE):
         for rank in range(BOARD_SIZE):
@@ -232,6 +276,8 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
                 base = SELECTED
             elif (file, rank) in gs.targets:
                 base = TARGET
+            elif gs.debug and gs.hovered == (file, rank):
+                base = tuple(min(255, c + 25) for c in base)
             # 프로모션 모드: 프로모션 위치 색상 반전
             if gs.mode == "promote" and gs.promoting_pos == (file, rank):
                 base = (255 - base[0], 255 - base[1], 255 - base[2])
@@ -270,7 +316,7 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
                     screen.blit(mark, mark_rect)
 
     # Info panel
-    panel = pygame.Rect(BOARD_PX, 0, INFO_WIDTH, BOARD_PX)
+    panel = pygame.Rect(BOARD_PX, 0, panel_width, BOARD_PX)
     pygame.draw.rect(screen, PANEL_BG, panel)
 
     lines = [
@@ -280,6 +326,7 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
         f"Mode: {gs.mode}",
         f"Drop: {PIECE_NAMES.get(gs.drop_kind, '')} ({gs.drop_kind})" if gs.mode != "promote" else f"Promote to: {PIECE_NAMES.get(gs.drop_kind, '')} ({gs.drop_kind})",
         f"Status: {gs.status}",
+        f"Debug: {'ON' if gs.debug else 'OFF'}",
     ]
     # 프로모션된 기물 표시
     if gs.promoted_piece:
@@ -299,6 +346,7 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
             "",
             "Controls:",
             "  M move | D drop | S stun",
+            "  U succession | V disguise",
             "  Tab/Shift+Tab cycle pieces",
             "  Click END TURN to finish turn",
             "  R reset | Q/Esc quit",
@@ -309,37 +357,110 @@ def draw(gs: EngineState, screen, font, info_font) -> None:
     y = 10
     for line in lines:
         surf = info_font.render(line, True, PANEL_TEXT)
-        screen.blit(surf, (BOARD_PX + 10, y))
+        screen.blit(surf, (base_x, y))
         y += 22
 
     # End Turn button
-    pygame.draw.rect(screen, (50, 100, 50), END_TURN_BTN)
-    pygame.draw.rect(screen, (100, 200, 100), END_TURN_BTN, 2)
+    pygame.draw.rect(screen, (50, 100, 50), end_btn)
+    pygame.draw.rect(screen, (100, 200, 100), end_btn, 2)
     btn_text = info_font.render("END TURN", True, (255, 255, 255))
-    btn_rect = btn_text.get_rect(center=END_TURN_BTN.center)
+    btn_rect = btn_text.get_rect(center=end_btn.center)
     screen.blit(btn_text, btn_rect)
 
-    # Selected piece detail
+    # Debug toggle button
+    dbg_color = (80, 80, 120) if gs.debug else (60, 60, 60)
+    pygame.draw.rect(screen, dbg_color, debug_btn)
+    pygame.draw.rect(screen, (140, 140, 200), debug_btn, 2)
+    dbg_text = info_font.render("DEBUG OVERLAY", True, (255, 255, 255))
+    dbg_rect = dbg_text.get_rect(center=debug_btn.center)
+    screen.blit(dbg_text, dbg_rect)
+
+    # Selected piece detail (defer rendering; place in debug panel if present)
+    selected_lines: List[str] = []
     if gs.selected:
         sx, sy = gs.selected
         p = gs.piece_at(sx, sy)
         if p:
-            detail = [
+            selected_lines = [
                 f"Selected: {p['type']}{'*' if p['color']=='black' else ''} @ {sx},{sy}",
                 f"Stun: {p['stun']}",
                 "Targets: " + (" ".join([f"{tx},{ty}" for tx, ty in gs.targets]) or "none"),
             ]
-            for line in detail:
-                surf = info_font.render(line, True, PANEL_TEXT)
-                screen.blit(surf, (BOARD_PX + 10, y))
-                y += 20
+
+    # Debug panel content (uses extra width area)
+    if debug_panel:
+        dy = 10
+        # Hover detail
+        if gs.hovered:
+            hp = gs.piece_at(*gs.hovered)
+            label = f"Hover: {gs.hovered[0]},{gs.hovered[1]}" if hp else "Hover: empty"
+            surf = info_font.render(label, True, (200, 220, 200))
+            screen.blit(surf, (debug_x, dy)); dy += 20
+            if hp:
+                dbg_lines = [
+                    f"type={hp['type']} color={hp['color']}",
+                    f"stun={hp['stun']} stunned={hp['stunned']}",
+                    f"move_stack={hp['move_stack']} royal={hp.get('royal', False)}",
+                    f"disguise={hp.get('disguised_as', '') or '-'}",
+                ]
+                for line in dbg_lines:
+                    surf = info_font.render(line, True, (180, 220, 180))
+                    screen.blit(surf, (debug_x, dy)); dy += 18
+            dy += 8
+
+        # Selected piece detail (relocated to debug panel to avoid overlap)
+        if selected_lines:
+            surf = info_font.render("Selected:", True, PANEL_TEXT)
+            screen.blit(surf, (debug_x, dy)); dy += 18
+            for line in selected_lines:
+                surf = info_font.render(line, True, (220, 220, 180))
+                screen.blit(surf, (debug_x, dy)); dy += 18
+            dy += 8
+
+        # Royal pieces list
+        royals = [p for p in gs.engine.board_state() if p.get('royal')]
+        surf = info_font.render(f"Royals ({len(royals)}):", True, PANEL_TEXT)
+        screen.blit(surf, (debug_x, dy)); dy += 20
+        for rp in royals:
+            line = f"{rp['color'][0]} {rp['type']} @ {rp['file']},{rp['rank']}" + (f" disguise={rp.get('disguised_as','') or '-'}" if rp.get('disguised_as') else "")
+            surf = info_font.render(line, True, (210, 210, 255))
+            screen.blit(surf, (debug_x, dy)); dy += 18
+        if not royals:
+            surf = info_font.render("(none)", True, (140, 140, 160))
+            screen.blit(surf, (debug_x, dy)); dy += 18
+        dy += 10
+
+        # All pieces quick table (color:type@pos stun/ms)
+        surf = info_font.render("Pieces:", True, PANEL_TEXT)
+        screen.blit(surf, (debug_x, dy)); dy += 18
+        pcs = sorted(gs.engine.board_state(), key=lambda p: (p['color'], p['type'], p['file'], p['rank']))
+        for p in pcs:
+            line = f"{p['color'][0]} {p['type']} {p['file']},{p['rank']} s={p['stun']}/{p['move_stack']}" + (" R" if p.get('royal') else "")
+            if p.get('disguised_as'):
+                line += f" dg={p['disguised_as']}"
+            surf = info_font.render(line, True, (180, 200, 255) if p.get('royal') else PANEL_TEXT)
+            screen.blit(surf, (debug_x, dy)); dy += 16
+    else:
+        # Non-debug: render selected detail in main panel below existing info
+        for line in selected_lines:
+            surf = info_font.render(line, True, PANEL_TEXT)
+            screen.blit(surf, (base_x, y))
+            y += 20
 
     pygame.display.flip()
 
 
 def handle_click(gs: EngineState, pos: Tuple[int, int]) -> None:
+    debug_btn, end_btn = layout_buttons(gs)
+
+    # Debug toggle button
+    if debug_btn.collidepoint(pos):
+        gs.debug = not gs.debug
+        gs.status = "Debug overlay ON" if gs.debug else "Debug overlay OFF"
+        return
+
     # Check if END TURN button was clicked
-    if END_TURN_BTN.collidepoint(pos):
+    if end_btn.collidepoint(pos):
         gs.engine.next_turn()
         gs.refresh()
         gs.selected = None
@@ -404,16 +525,42 @@ def handle_click(gs: EngineState, pos: Tuple[int, int]) -> None:
                     gs.status = "Move rejected"
             else:
                 gs.status = "Not a legal target"
+    elif gs.mode == "succession":
+        # Succession mode: 선택할 기물(왕이 아닌) 클릭
+        p = gs.piece_at(x, y)
+        if p and p["color"] == gs.turn and not p["stunned"]:
+            if p["type"] != "K":  # 왕이 아닌 기물만 선택 가능
+                if gs.try_succession(x, y):
+                    gs.status = "Succession successful"
+                    gs.selected = None
+                    gs.targets = []
+                else:
+                    gs.status = "Succession failed"
+            else:
+                gs.status = "Cannot use king as successor"
+        else:
+            gs.status = "Select your piece (not king)"
+    elif gs.mode == "disguise":
+        # Disguise mode: 왕(로얄 피스) 선택
+        p = gs.piece_at(x, y)
+        if p and p["color"] == gs.turn and p["type"] == "K":
+            if gs.try_disguise(x, y, gs.drop_kind):
+                gs.status = f"Disguised as {gs.drop_kind}"
+                gs.selected = None
+                gs.targets = []
+            else:
+                gs.status = "Cannot disguise"
+        else:
+            gs.status = "Select your king"
 
 
 def main() -> None:
     pygame.init()
-    screen = pygame.display.set_mode(WINDOW_SIZE)
+    gs = EngineState()
+    screen = pygame.display.set_mode((BOARD_PX + layout_panel_width(gs), BOARD_PX))
     pygame.display.set_caption("변형체스 (C++ 엔진)")
     font = pygame.font.SysFont("arial", SQUARE_SIZE // 2)
     info_font = pygame.font.SysFont("arial", 18)
-
-    gs = EngineState()
 
     clock = pygame.time.Clock()
     running = True
@@ -430,13 +577,6 @@ def main() -> None:
                     gs = EngineState()
                     gs.status = "Game reset"
                     gs.promoted_piece = None
-                # 포지션 로드: L + 숫자 (L1, L2, ...)
-                elif event.key == pygame.K_l:
-                    positions = test_positions.list_positions()
-                    if positions:
-                        gs.status = f"Press 1-{len(positions)} to load position: {', '.join(positions)}"
-                    else:
-                        gs.status = "No test positions available"
                 elif pygame.key.get_mods() & pygame.KMOD_LSHIFT and event.key in range(pygame.K_1, pygame.K_9 + 1):
                     # Shift + 숫자로 포지션 로드
                     pos_idx = event.key - pygame.K_1
@@ -453,8 +593,15 @@ def main() -> None:
                 elif event.key == pygame.K_s:
                     gs.mode = "stun"
                     gs.status = "Stun mode"
+                elif event.key == pygame.K_u:
+                    gs.mode = "succession"
+                    gs.status = "Succession mode (선택할 기물 클릭)"
+                elif event.key == pygame.K_v:
+                    gs.mode = "disguise"
+                    gs.status = "Disguise mode (변장할 킹 선택)"
+                    gs.drop_kind = "Q"  # 기본 변장 기물
                 # Cycle with Tab / Shift+Tab for scalable selection
-                # 프로모션 모드일 때는 P/K 제외
+                # 프로모션 모드일 때는 P/K 제외, disguise 모드일 때는 K 제외
                 elif event.key == pygame.K_TAB and not pygame.key.get_mods() & pygame.KMOD_SHIFT:
                     try:
                         cur_idx = PIECE_ORDER.index(gs.drop_kind)
@@ -469,6 +616,14 @@ def main() -> None:
                         except ValueError:
                             cur_idx = 0
                         gs.drop_kind = promo_pieces[(cur_idx + 1) % len(promo_pieces)]
+                    elif gs.mode == "disguise":
+                        # 변장용: K 제외된 리스트 (다른 기물로만 변장 가능)
+                        disguise_pieces = [p for p in PIECE_ORDER if p != "K"]
+                        try:
+                            cur_idx = disguise_pieces.index(gs.drop_kind)
+                        except ValueError:
+                            cur_idx = 0
+                        gs.drop_kind = disguise_pieces[(cur_idx + 1) % len(disguise_pieces)]
                     else:
                         gs.drop_kind = PIECE_ORDER[(cur_idx + 1) % len(PIECE_ORDER)]
                     gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
@@ -486,6 +641,14 @@ def main() -> None:
                         except ValueError:
                             cur_idx = 0
                         gs.drop_kind = promo_pieces[(cur_idx - 1) % len(promo_pieces)]
+                    elif gs.mode == "disguise":
+                        # 변장용: K 제외된 리스트 (역방향)
+                        disguise_pieces = [p for p in PIECE_ORDER if p != "K"]
+                        try:
+                            cur_idx = disguise_pieces.index(gs.drop_kind)
+                        except ValueError:
+                            cur_idx = 0
+                        gs.drop_kind = disguise_pieces[(cur_idx - 1) % len(disguise_pieces)]
                     else:
                         gs.drop_kind = PIECE_ORDER[(cur_idx - 1) % len(PIECE_ORDER)]
                     gs.status = f"Selected {PIECE_NAMES.get(gs.drop_kind, gs.drop_kind)}"
@@ -507,6 +670,10 @@ def main() -> None:
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 handle_click(gs, event.pos)
+
+            elif event.type == pygame.MOUSEMOTION:
+                sq = board_from_mouse(event.pos)
+                gs.hovered = sq
 
         draw(gs, screen, font, info_font)
 

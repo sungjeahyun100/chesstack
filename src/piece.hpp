@@ -63,6 +63,8 @@ class piece{
         colorType cT;
         std::vector<legalMoveChunk> movePatterns; // 기물이 가질 수 있는 이동 패턴들
         std::vector<PGN> legal_move; // 계산된 합법 이동들
+        bool is_royal; // 로얄 피스 여부
+        pieceType disguised_as; // 변장 상태 (로얄 피스만 사용, NONE이면 변장 안 함)
 
     public:
         // 생성자
@@ -80,6 +82,8 @@ class piece{
         int getMoveStack() const { return move_stack; }
         const std::vector<PGN>& getLegalMoves() const { return legal_move; }
         const std::vector<legalMoveChunk>& getMovePatterns() const { return movePatterns; }
+        bool isRoyal() const { return is_royal; }
+        pieceType getDisguisedAs() const { return disguised_as; }
         
         // 이동 패턴 관리
         void addMovePattern(const legalMoveChunk& m);
@@ -95,6 +99,8 @@ class piece{
         void setFile(int f) { file = f; }
         void setRank(int r) { rank = r; }
         void setPieceType(pieceType type) { pT = type; }
+        void setRoyal(bool royal) { is_royal = royal; }
+        void setDisguisedAs(pieceType type) { disguised_as = type; }
         // 스턴 조작
         void setStun(int s) { 
             stun_stack = std::max(0, s);

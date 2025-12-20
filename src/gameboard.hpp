@@ -70,8 +70,8 @@ class bc_board{
         bool passAndAddStun(int file, int rank, int delta = 1); // 킹 제외 스턴 +1
         bool promote(int file, int rank, pieceType promoteTo); // 폰 프로모션
         
-        // 게임 진행 함수
-        void nextTurn(); // 이동 후 호출 (스턴 감소)
+        // 턴 진행용 함수.
+        void nextTurn(); // 턴을 종료했을 때 호출하는 함수로 이 타이밍에 스턴-이동 스택에 대한 연산을 수행한다.
         
         // 포지션 설정/불러오기
         void clearBoard(); // 보드 초기화 (기물만 제거, 포켓/턴 유지)
@@ -98,6 +98,15 @@ class bc_board{
         
         // 기보 출력
         void printGameLog() const;
+        
+        // FEN 변환
+        std::string getBoardAsFEN() const;
+        
+        // 로얄 피스 관련
+        bool hasRoyalPiece(colorType color) const;
+        bool isRoyalPieceInCheck(colorType color) const;
+        bool disguisePiece(int file, int rank, pieceType disguiseAs); // 로얄 피스 변장
+        bool succeedRoyalPiece(int file, int rank, colorType color); // 로얄 피스 승격
 };
 
 // 기물 패턴 설정 함수

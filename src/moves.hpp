@@ -15,16 +15,21 @@ struct PGN{
         bool captureJumped; // 중간에 뛰어넘은 기물도 잡는지 (TAKEJUMP)
         int jumpedFile;
         int jumpedRank;
+        bool isDisguise; // 기물 변장 여부
+        pieceType disguiseAs; // 변장할 기물 타입
+        bool isSuccession; // 로얄 피스 승격 여부
         
         // 생성자
         PGN() : startFile(0), startRank(0), endFile(0), endRank(0), 
             pT(pieceType::NONE), cT(colorType::NONE), take(false), isDrop(false),
-            captureJumped(false), jumpedFile(-1), jumpedRank(-1) {}
+            captureJumped(false), jumpedFile(-1), jumpedRank(-1), 
+            isDisguise(false), disguiseAs(pieceType::NONE), isSuccession(false) {}
         
-                PGN(int sF, int sR, int eF, int eR, pieceType p, colorType c, bool t)
-                        : startFile(sF), startRank(sR), endFile(eF), endRank(eR),
-                            pT(p), cT(c), take(t), isDrop(false),
-                            captureJumped(false), jumpedFile(-1), jumpedRank(-1) {}
+        PGN(int sF, int sR, int eF, int eR, pieceType p, colorType c, bool t)
+                : startFile(sF), startRank(sR), endFile(eF), endRank(eR),
+                    pT(p), cT(c), take(t), isDrop(false),
+                    captureJumped(false), jumpedFile(-1), jumpedRank(-1),
+                    isDisguise(false), disguiseAs(pieceType::NONE), isSuccession(false) {}
               
         // PGN 문자열로 변환 (예: "Nf3", "exd5", "Q@d4")
         std::string toString() const;

@@ -66,6 +66,64 @@ POSITIONS = {
             {"type": "N", "color": "black", "file": 1, "rank": 5, "stun": 0, "move_stack": 1},
         ],
     },
+    
+    # 로얄 피스(킹) 체크 테스트 (기본: 백선)
+    # 백 킹이 흑 룩에게 공격받는 상황 (체크 상태)
+    "royal_check_test": {
+        "turn": "white",
+        "pieces": [
+            {"type": "K", "color": "white", "file": 4, "rank": 3, "stun": 0, "move_stack": 1},
+            {"type": "K", "color": "black", "file": 4, "rank": 7, "stun": 0, "move_stack": 1},
+            {"type": "R", "color": "black", "file": 4, "rank": 5, "stun": 0, "move_stack": 1},  # 백 킹 위에서 체크
+            {"type": "Q", "color": "white", "file": 2, "rank": 2, "stun": 0, "move_stack": 2},
+            {"type": "N", "color": "white", "file": 6, "rank": 2, "stun": 0, "move_stack": 2},
+            {"type": "Q", "color": "black", "file": 3, "rank": 6, "stun": 0, "move_stack": 2},
+            {"type": "B", "color": "black", "file": 5, "rank": 5, "stun": 0, "move_stack": 1},
+        ],
+        "pockets": {
+            "white": {"K":1, "Q":0, "B":1, "N":1, "R":2, "P":8},
+            "black": {"K":1, "Q":1, "B":2, "N":2, "R":1, "P":8},
+        }
+    },
+    
+    # 로얄 피스 변장 테스트 (기본: 백선)
+    # 백 킹이 변장할 수 있는 상황 (다른 기물들이 주변에 있음)
+    "royal_disguise_test": {
+        "turn": "white",
+        "pieces": [
+            {"type": "K", "color": "white", "file": 4, "rank": 4, "stun": 0, "move_stack": 1},  # 로얄 피스
+            {"type": "K", "color": "black", "file": 4, "rank": 7, "stun": 0, "move_stack": 1},
+            {"type": "Q", "color": "white", "file": 5, "rank": 4, "stun": 0, "move_stack": 2},
+            {"type": "R", "color": "white", "file": 3, "rank": 4, "stun": 0, "move_stack": 1},
+            {"type": "B", "color": "white", "file": 2, "rank": 3, "stun": 0, "move_stack": 1},
+            {"type": "N", "color": "white", "file": 6, "rank": 3, "stun": 0, "move_stack": 1},
+            {"type": "Q", "color": "black", "file": 4, "rank": 6, "stun": 0, "move_stack": 1},
+            {"type": "R", "color": "black", "file": 6, "rank": 6, "stun": 0, "move_stack": 1},
+        ],
+        "pockets": {
+            "white": {"K":1, "Q":0, "B":1, "N":1, "R":1, "P":8},
+            "black": {"K":1, "Q":1, "B":2, "N":2, "R":1, "P":8},
+        }
+    },
+    
+    # 로얄 피스 승격 테스트 (기본: 백선)
+    # 백 킹이 잡혀서 다른 기물(퀸)을 로얄 피스로 승격하는 상황
+    "royal_succession_test": {
+        "turn": "white",
+        "pieces": [
+            {"type": "K", "color": "white", "file": 4, "rank": 4, "stun": 1, "move_stack": 0},  # 체크 상태의 로얄 피스
+            {"type": "K", "color": "black", "file": 4, "rank": 7, "stun": 0, "move_stack": 1},
+            {"type": "Q", "color": "white", "file": 3, "rank": 3, "stun": 0, "move_stack": 2},  # 새 로얄 후보
+            {"type": "R", "color": "white", "file": 5, "rank": 3, "stun": 0, "move_stack": 1},
+            {"type": "N", "color": "white", "file": 6, "rank": 4, "stun": 0, "move_stack": 1},
+            {"type": "R", "color": "black", "file": 4, "rank": 5, "stun": 0, "move_stack": 1},  # 흑 룩이 백 킹 공격
+            {"type": "Q", "color": "black", "file": 3, "rank": 6, "stun": 0, "move_stack": 1},
+        ],
+        "pockets": {
+            "white": {"K":1, "Q":0, "B":2, "N":2, "R":1, "P":8},
+            "black": {"K":1, "Q":1, "B":2, "N":2, "R":1, "P":8},
+        }
+    },
 }
 
 def _copy_position(pos_dict):
@@ -96,9 +154,5 @@ def get_position(name, turn_override=None):
     return data
 
 def list_positions():
-    """사용 가능한 포지션 목록 반환 (백선/흑선 선택용으로 각 포지션당 2개 이름 제공)"""
-    names = []
-    for base in POSITIONS.keys():
-        names.append(f"{base}:white")
-        names.append(f"{base}:black")
-    return names
+    """사용 가능한 포지션 목록 반환 (기본 이름만). 필요하면 get_position(name, turn_override="black") 또는 name+":black"을 직접 사용."""
+    return list(POSITIONS.keys())
