@@ -13,7 +13,7 @@
   - `pieceTypeToPocketIndex`에 새 타입 → 포켓 인덱스 매핑 추가
 
 3) 이동 패턴
-- `src/chess.hpp`
+- `src/gameboard.hpp`
   - `setupPiecePatterns`에 새 기물의 이동/위협 패턴 추가
   - 필요하면 방향 상수(`*_DIRECTIONS`)를 새로 정의하거나 기존 상수 재사용
   - 위협 타입(`TAKEJUMP`, `MOVEJUMP`, `TAKEMOVE` 등) 선택 시 의도한 규칙과 일치하는지 확인

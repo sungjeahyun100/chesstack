@@ -72,6 +72,16 @@ class bc_board{
         
         // 게임 진행 함수
         void nextTurn(); // 이동 후 호출 (스턴 감소)
+        
+        // 포지션 설정/불러오기
+        void clearBoard(); // 보드 초기화 (기물만 제거, 포켓/턴 유지)
+        void setupPosition(
+            const std::vector<std::tuple<pieceType, colorType, int, int, int, int>>& pieces,
+            colorType turn = colorType::WHITE,
+            const std::array<int, POCKET_SIZE>* whitePocketOverride = nullptr,
+            const std::array<int, POCKET_SIZE>* blackPocketOverride = nullptr
+        ); // (type, color, file, rank, stun, moveStack)
+        void setTurn(colorType turn);
 
         // 포켓 조회
         std::array<int, POCKET_SIZE> getPocketStock(colorType color) const;
@@ -89,3 +99,94 @@ class bc_board{
         // 기보 출력
         void printGameLog() const;
 };
+
+// 기물 패턴 설정 함수
+// 주어진 기물에 적절한 이동 패턴을 추가합니다.
+inline void setupPiecePatterns(piece* p) {
+    if (!p) return;
+    
+    pieceType type = p->getPieceType();
+    
+    switch(type) {
+        case pieceType::KNIGHT:
+            // RAY_FINITE로 구현: 최대 2칸까지 나이트 방향으로 이동 (경로상 기물에 영향)
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
+            break;
+        case pieceType::BISHOP:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, BISHOP_DIRECTIONS));
+            break;
+        case pieceType::ROOK:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, ROOK_DIRECTIONS));
+            break;
+        case pieceType::QUEEN:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
+            break;
+        case pieceType::KING:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KING_DIRECTIONS, 1));
+            break;
+        case pieceType::PWAN:
+            // 폰: 전진 + 대각선 캡처 (색상에 따라 방향 달라짐)
+            if(p->getColor() == colorType::WHITE) {
+                // 백: +1 방향 (상향)
+                std::vector<std::pair<int, int>> pawnForward = {{0, 1}};
+                p->addMovePattern(legalMoveChunk(threatType::MOVE, moveType::RAY_FINITE, pawnForward, 1));
+                std::vector<std::pair<int, int>> pawnCapture = {{-1, 1}, {1, 1}};
+                p->addMovePattern(legalMoveChunk(threatType::TAKE, moveType::RAY_FINITE, pawnCapture, 1));
+            } else {
+                // 흑: -1 방향 (하향)
+                std::vector<std::pair<int, int>> pawnForward = {{0, -1}};
+                p->addMovePattern(legalMoveChunk(threatType::MOVE, moveType::RAY_FINITE, pawnForward, 1));
+                std::vector<std::pair<int, int>> pawnCapture = {{-1, -1}, {1, -1}};
+                p->addMovePattern(legalMoveChunk(threatType::TAKE, moveType::RAY_FINITE, pawnCapture, 1));
+            }
+            break;
+        case pieceType::AMAZON:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
+            break;
+        case pieceType::GRASSHOPPER:
+            p->addMovePattern(legalMoveChunk(threatType::MOVEJUMP, moveType::RAY_INFINITE, QUEEN_DIRECTIONS));
+            break;
+        case pieceType::KNIGHTRIDER:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, KNIGHT_DIRECTIONS));
+            break;
+        case pieceType::ARCHBISHOP:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_INFINITE, BISHOP_DIRECTIONS));
+            break;
+        case pieceType::DABBABA:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, DABBABA_DIRECTIONS, 1));
+            break;
+        case pieceType::ALFIL:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, ALFIL_DIRECTIONS, 1));
+            break;
+        case pieceType::FERZ:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, BISHOP_DIRECTIONS, 1));
+            break;
+        case pieceType::CENTAUR:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KING_DIRECTIONS, 1));
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, KNIGHT_DIRECTIONS, 1));
+            break;
+        case pieceType::TESTROOK:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEJUMP, moveType::RAY_INFINITE, ROOK_DIRECTIONS));
+            break;
+        case pieceType::CAMEL:
+            p->addMovePattern(legalMoveChunk(threatType::TAKEMOVE, moveType::RAY_FINITE, CAMEL_DIRECTIONS, 1));
+            break;
+        default:
+            break;
+    }
+}
+
+// 보드의 모든 기물에 대해 패턴을 설정합니다.
+inline void setupAllPieces(bc_board* board) {
+    if (!board) return;
+    for(int f = 0; f < 8; f++) {
+        for(int r = 0; r < 8; r++) {
+            piece* p = board->getPiece(f, r);
+            if(p) {
+                setupPiecePatterns(p);
+            }
+        }
+    }
+}

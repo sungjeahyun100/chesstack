@@ -4,6 +4,7 @@
 - 드롭/이동/스턴 모두 pybind11 바인딩을 통해 수행합니다.
 - 합법 수는 엔진의 legal_moves를 사용합니다.
 - 기본 조작: D=드롭, M=이동, S=스턴, 턴 종료는 END TURN 버튼 클릭, R=리셋, Q/Esc=종료, 숫자키 1~6으로 드롭 기물 선택.
+- L+숫자: 테스트 포지션 로드 (L1~L9)
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pygame
+import test_positions
 
 # Ensure the locally built extension (build/chess_python*.so) is importable.
 _ROOT = Path(__file__).resolve().parent
@@ -189,6 +191,23 @@ class EngineState:
             self.last_move = ((-1, -1), (x, y))
             self.refresh()
         return ok
+
+    def load_position(self, position_name: str) -> bool:
+        """테스트 포지션 로드"""
+        pos_data = test_positions.get_position(position_name)
+        if not pos_data:
+            self.status = f"Position '{position_name}' not found"
+            return False
+        
+        try:
+            self.engine.setup_position(pos_data)
+            self.setupMovePattern()
+            self.refresh()
+            self.status = f"Loaded position: {position_name}"
+            return True
+        except Exception as e:
+            self.status = f"Error loading position: {e}"
+            return False
 
 
 def board_from_mouse(pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
@@ -411,6 +430,20 @@ def main() -> None:
                     gs = EngineState()
                     gs.status = "Game reset"
                     gs.promoted_piece = None
+                # 포지션 로드: L + 숫자 (L1, L2, ...)
+                elif event.key == pygame.K_l:
+                    positions = test_positions.list_positions()
+                    if positions:
+                        gs.status = f"Press 1-{len(positions)} to load position: {', '.join(positions)}"
+                    else:
+                        gs.status = "No test positions available"
+                elif pygame.key.get_mods() & pygame.KMOD_LSHIFT and event.key in range(pygame.K_1, pygame.K_9 + 1):
+                    # Shift + 숫자로 포지션 로드
+                    pos_idx = event.key - pygame.K_1
+                    positions = test_positions.list_positions()
+                    if pos_idx < len(positions):
+                        pos_name = positions[pos_idx]
+                        gs.load_position(pos_name)
                 elif event.key == pygame.K_m:
                     gs.mode = "move"
                     gs.status = "Move mode"

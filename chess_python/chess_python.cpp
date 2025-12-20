@@ -68,6 +68,32 @@ std::string piece_to_str(pieceType t) {
 	}
 }
 
+colorType str_to_color(const std::string& s) {
+	if (s == "white") return colorType::WHITE;
+	if (s == "black") return colorType::BLACK;
+	return colorType::NONE;
+}
+
+pieceType str_to_piece(const std::string& s) {
+	if (s == "K") return pieceType::KING;
+	if (s == "Q") return pieceType::QUEEN;
+	if (s == "B") return pieceType::BISHOP;
+	if (s == "N") return pieceType::KNIGHT;
+	if (s == "R") return pieceType::ROOK;
+	if (s == "P") return pieceType::PWAN;
+	if (s == "A") return pieceType::AMAZON;
+	if (s == "G") return pieceType::GRASSHOPPER;
+	if (s == "Kr") return pieceType::KNIGHTRIDER;
+	if (s == "W") return pieceType::ARCHBISHOP;
+	if (s == "D") return pieceType::DABBABA;
+	if (s == "L") return pieceType::ALFIL;
+	if (s == "F") return pieceType::FERZ;
+	if (s == "C") return pieceType::CENTAUR;
+	if (s == "Tr") return pieceType::TESTROOK;
+	if (s == "Cl") return pieceType::CAMEL;
+	return pieceType::NONE;
+}
+
 py::dict pocket_to_dict(const std::array<int, POCKET_SIZE> &p) {
 	py::dict d;
 	// Follow pocketIndex ordering from enum.hpp
@@ -198,6 +224,62 @@ public:
 	int black_move_count() const { return board.getBlackMoveCount(); }
 
 	void print_board() const { board.printBoard(); }
+	
+	// 포지션 설정: 리스트 그대로 또는 {"turn": "white/black", "pieces": [...], "pockets": {"white": {...}, "black": {...}}}
+	void setup_position(const py::object& position_obj) {
+		py::list piece_list;
+		colorType turn = colorType::WHITE;
+		std::array<int, POCKET_SIZE> whitePocketOverride{};
+		std::array<int, POCKET_SIZE> blackPocketOverride{};
+		bool hasPocketOverride = false;
+
+		if (py::isinstance<py::dict>(position_obj)) {
+			py::dict d = position_obj.cast<py::dict>();
+			if (d.contains("turn")) {
+				turn = str_to_color(d["turn"].cast<std::string>());
+			}
+			if (d.contains("pieces")) {
+				piece_list = d["pieces"].cast<py::list>();
+			} else {
+				piece_list = py::list(position_obj);
+			}
+			if (d.contains("pockets")) {
+				py::dict pockets = d["pockets"].cast<py::dict>();
+				if (pockets.contains("white")) {
+					whitePocketOverride = dict_to_pocket(pockets["white"].cast<py::dict>());
+					hasPocketOverride = true;
+				}
+				if (pockets.contains("black")) {
+					blackPocketOverride = dict_to_pocket(pockets["black"].cast<py::dict>());
+					hasPocketOverride = true;
+				}
+			}
+		} else {
+			piece_list = position_obj.cast<py::list>();
+		}
+
+		std::vector<std::tuple<pieceType, colorType, int, int, int, int>> pieces;
+		for (const auto& item : piece_list) {
+			py::dict d = item.cast<py::dict>();
+			std::string type_str = d["type"].cast<std::string>();
+			std::string color_str = d["color"].cast<std::string>();
+			int file = d["file"].cast<int>();
+			int rank = d["rank"].cast<int>();
+			int stun = d["stun"].cast<int>();
+			int move_stack = d["move_stack"].cast<int>();
+
+			pieceType type = str_to_piece(type_str);
+			colorType color = str_to_color(color_str);
+
+			pieces.emplace_back(type, color, file, rank, stun, move_stack);
+		}
+
+		if (hasPocketOverride) {
+			board.setupPosition(pieces, turn, &whitePocketOverride, &blackPocketOverride);
+		} else {
+			board.setupPosition(pieces, turn);
+		}
+	}
 
 private:
 	bc_board board;
@@ -227,5 +309,6 @@ PYBIND11_MODULE(chess_python, m) {
 		.def("promote", &PyBoard::promote, py::arg("file"), py::arg("rank"), py::arg("promoteTo"), "Promote pawn to another piece")
 		.def("white_move_count", &PyBoard::white_move_count, "Get white's move count")
 		.def("black_move_count", &PyBoard::black_move_count, "Get black's move count")
+		.def("setup_position", &PyBoard::setup_position, py::arg("piece_list"), "Setup custom position from list of pieces")
 		.def("print_board", &PyBoard::print_board);
 }

@@ -616,3 +616,69 @@ void bc_board::printGameLog() const {
     }
     std::cout << std::endl;
 }
+
+// 보드 클리어 (기물만 제거, 포켓/턴 유지)
+void bc_board::clearBoard() {
+    pieces.clear();
+    activePieceThisTurn = nullptr;
+    performedActionThisTurn = false;
+    
+    for(int i = 0; i < BOARD_SIZE; i++) {
+        for(int j = 0; j < BOARD_SIZE; j++) {
+            board[i][j] = nullptr;
+        }
+    }
+}
+
+// 포지션 설정 (type, color, file, rank, stun, moveStack)
+void bc_board::setupPosition(
+    const std::vector<std::tuple<pieceType, colorType, int, int, int, int>>& pieceList,
+    colorType turn,
+    const std::array<int, POCKET_SIZE>* whitePocketOverride,
+    const std::array<int, POCKET_SIZE>* blackPocketOverride
+) {
+    clearBoard();
+
+    // 포켓 설정: 기본값으로 초기화 후 오버라이드가 있으면 적용
+    resetPockets();
+    if (whitePocketOverride) {
+        setPocketStock(colorType::WHITE, *whitePocketOverride);
+    }
+    if (blackPocketOverride) {
+        setPocketStock(colorType::BLACK, *blackPocketOverride);
+    }
+    
+    for(const auto& [type, color, file, rank, stun, moveStack] : pieceList) {
+        if(!isValidPosition(file, rank)) continue;
+        if(board[file][rank] != nullptr) continue; // 이미 기물이 있으면 스킵
+        
+        // 새 기물 추가
+        pieces.emplace_back(type, color, file, rank, pieces.size());
+        piece* p = &pieces.back();
+        
+        // 스턴과 이동 스택 설정
+        p->setStun(stun);
+        p->setMoveStack(moveStack);
+
+        // 기물 종류/색에 맞춰 이동 패턴을 설정
+        setupPiecePatterns(p);
+        
+        // 보드에 배치
+        board[file][rank] = p;
+    }
+    
+    // 턴 설정 (기본: 백)
+    setTurn(turn);
+
+    // 모든 기물의 합법 이동 계산
+    updateAllLegalMoves();
+}
+
+// 턴 설정: whiteMoveCount/blackMoveCount로 현재 턴 결정 (whiteMoveCount==blackMoveCount -> 백 차례)
+void bc_board::setTurn(colorType turn) {
+    whiteMoveCount = 0;
+    blackMoveCount = 0;
+    if(turn == colorType::BLACK) {
+        whiteMoveCount = 1; // 백이 한 번 둔 것으로 취급하여 흑 차례로 설정
+    }
+}
