@@ -121,7 +121,10 @@ project_bc/
 
 ### 빌드 및 실행
 ```bash
+sudo apt update && sudo apt-get install python3.12-dev
 cd chesstack
+python3 -m venv .venv && source .venv/bin/activate
+pip3 install -r requirements.txt
 mkdir -p build && cd build
 cmake .. -DBUILD_PYTHON_BINDINGS=ON
 make -j4

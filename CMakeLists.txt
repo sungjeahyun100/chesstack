@@ -66,6 +66,13 @@ endif()
 
 # Python extension with pybind11 (requires pybind11 package installed)
 if(BUILD_PYTHON_BINDINGS)
+    # pip로 설치된 pybind11 찾기
+    execute_process(
+        COMMAND python -m pybind11 --cmakedir
+        OUTPUT_VARIABLE pybind11_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    
     find_package(pybind11 CONFIG REQUIRED)
     pybind11_add_module(chess_python
         ${CMAKE_CURRENT_SOURCE_DIR}/chess_python/chess_python.cpp
